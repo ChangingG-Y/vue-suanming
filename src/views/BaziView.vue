@@ -19,14 +19,16 @@
       </div>
     </div>
 
-    <!-- Main content: table + yun panel -->
+    <!-- Main content: table -->
     <div class="main-content">
       <div class="table-panel">
         <MainTable :data="data" />
       </div>
-      <div class="yun-panel-wrap">
-        <YunPanel :data="data" />
-      </div>
+    </div>
+
+    <!-- 起运/大运/流年 -->
+    <div class="yun-section">
+      <YunPanel :data="data" />
     </div>
 
     <!-- 智能四柱图示 -->
@@ -57,6 +59,8 @@
         </el-tab-pane>
       </el-tabs>
     </div>
+
+    <AiAssistantDrawer :data="data" :form="form" />
   </div>
 </template>
 
@@ -71,6 +75,7 @@ import SiLingTable from '../components/settings/SiLingTable.vue'
 import ShenShaDetail from '../components/settings/ShenShaDetail.vue'
 import MingGongPanel from '../components/settings/MingGongPanel.vue'
 import GeJuPanel from '../components/settings/GeJuPanel.vue'
+import AiAssistantDrawer from '../components/ai/AiAssistantDrawer.vue'
 
 defineProps({ data: Object, form: Object })
 defineEmits(['back'])
@@ -82,10 +87,10 @@ function pad(n) { return String(n).padStart(2, '0') }
 </script>
 
 <style scoped>
-.bazi-view { background: #f5f5f5; min-height: 100vh; padding-bottom: 40px; }
+.bazi-view { background: #f4f1e8; min-height: 100vh; padding-bottom: 40px; }
 
 .bazi-header {
-  background: #1a1a1a;
+  background: #1f1f1f;
   color: #fff;
   padding: 12px 20px;
   display: flex;
@@ -110,19 +115,20 @@ function pad(n) { return String(n).padStart(2, '0') }
   flex-wrap: wrap;
 }
 .table-panel {
-  flex: 1 1 500px;
+  flex: 1 1 100%;
   background: #fff;
   border-radius: 8px;
   padding: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   min-width: 0;
 }
-.yun-panel-wrap {
-  flex: 0 0 380px;
+
+.yun-section {
+  margin: 0 12px 12px;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  min-width: 0;
+  overflow-x: auto;
 }
 
 .zhineng-section {
@@ -138,5 +144,39 @@ function pad(n) { return String(n).padStart(2, '0') }
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   padding: 0 12px 12px;
+}
+
+@media (max-width: 860px) {
+  .bazi-header {
+    align-items: flex-start;
+  }
+
+  .header-left {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .main-content {
+    display: block;
+    padding: 10px;
+  }
+
+  .table-panel {
+    width: 100%;
+    margin-bottom: 10px;
+    overflow-x: auto;
+  }
+
+  .yun-section,
+  .zhineng-section,
+  .settings-section {
+    margin: 0 10px 10px;
+    overflow-x: auto;
+  }
 }
 </style>

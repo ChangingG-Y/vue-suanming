@@ -22,7 +22,9 @@
       <div class="legend-row">
         <span class="legend he">合</span> 天干五合 &nbsp;
         <span class="legend chong">冲</span> 相冲克 &nbsp;
-        <span class="legend ke">克</span> 五行相克
+        <span class="legend ke">克</span> 五行相克 &nbsp;
+        <span class="legend sheng">生</span> 五行相生 &nbsp;
+        <span class="legend tong">同</span> 同天干
       </div>
     </div>
 
@@ -78,16 +80,22 @@ const GAN_HE = { 甲:'己', 己:'甲', 乙:'庚', 庚:'乙', 丙:'辛', 辛:'丙
 const GAN_HE_WX = { 甲:'土', 乙:'金', 丙:'水', 丁:'木', 戊:'火' }
 const GAN_WX = { 甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水' }
 const WX_KE = { 木:'土',火:'金',土:'水',金:'木',水:'火' }
+const WX_SHENG = { 木:'火',火:'土',土:'金',金:'水',水:'木' }
+const GAN_CHONG = { 甲:'庚',庚:'甲',乙:'辛',辛:'乙',丙:'壬',壬:'丙',丁:'癸',癸:'丁' }
 
 function ganRel(g1, g2) {
-  if (!g1 || !g2 || g1 === g2) return { text: '', cls: '' }
+  if (!g1 || !g2) return { text: '', cls: '' }
+  if (g1 === g2) return { text: '同', cls: 'tong' }
   if (GAN_HE[g1] === g2) {
     const wx = GAN_HE_WX[g1] || GAN_HE_WX[g2] || ''
     return { text: `合${wx}`, cls: 'he' }
   }
+  if (GAN_CHONG[g1] === g2) return { text: '冲', cls: 'chong' }
   const w1 = GAN_WX[g1], w2 = GAN_WX[g2]
   if (WX_KE[w1] === w2) return { text: '克', cls: 'ke' }
   if (WX_KE[w2] === w1) return { text: '被克', cls: 'chong' }
+  if (WX_SHENG[w1] === w2) return { text: '生', cls: 'sheng' }
+  if (WX_SHENG[w2] === w1) return { text: '被生', cls: 'sheng' }
   return { text: '', cls: '' }
 }
 
@@ -142,10 +150,10 @@ const sanheGroups = computed(() => {
 </script>
 
 <style scoped>
-.ganzhi-rel-wrap { padding: 8px; }
+.ganzhi-rel-wrap { padding: 8px; text-align: center; }
 .rel-section { margin-bottom: 20px; }
-.rel-title { font-size: 13px; font-weight: bold; color: #555; margin-bottom: 8px; padding-left: 4px; border-left: 3px solid #8b6914; }
-.rel-table { border-collapse: collapse; font-size: 12px; width: auto; }
+.rel-title { display: inline-block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 8px; padding: 0 8px 0 10px; border-left: 3px solid #8b6914; }
+.rel-table { border-collapse: collapse; font-size: 12px; width: auto; margin: 0 auto; }
 .rel-table th, .rel-table td { border: 1px solid #e8e0cc; padding: 5px 10px; text-align: center; min-width: 56px; }
 .rel-table th { background: #f5f0e8; font-weight: normal; color: #888; }
 .row-head { background: #fafaf8; color: #888; text-align: right; padding-right: 8px; }
@@ -153,6 +161,8 @@ const sanheGroups = computed(() => {
 .he { color: #3c8a2e; background: #f0faf0; }
 .chong { color: #c0392b; background: #fff5f5; }
 .ke { color: #e67e22; background: #fffaf0; }
+.sheng { color: #2271b8; background: #f3f8ff; }
+.tong { color: #666; background: #f7f7f7; }
 .xing { color: #8b6914; background: #fffdf0; }
 .hai { color: #9b59b6; background: #fdf5ff; }
 .legend-row { margin-top: 6px; font-size: 11px; color: #888; }
