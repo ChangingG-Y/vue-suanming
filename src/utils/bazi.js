@@ -40,12 +40,22 @@ const SS_SHORT = {
 }
 export function ssShort(s) { return SS_SHORT[s] || s }
 
-// 神煞 lookup tables (based on day master or year/day branch)
-const TIANYI = { 甲:[1,7],戊:[1,7],庚:[1,7],乙:[0,6],己:[0,6],丙:[11,9],丁:[11,9],壬:[3,5],癸:[3,5],辛:[6,2] }
+// 神煞 lookup tables. Different排盘系统在神煞口径上会有细微差异；
+// 这里采用常见四柱软件的做法：日干/年干、日支/年支、月令三套规则并用。
+const TIANYI = { 甲:[1,7],戊:[1,7],庚:[1,7],乙:[0,8],己:[0,8],丙:[11,9],丁:[11,9],壬:[3,5],癸:[3,5],辛:[6,2] }
 const WENCHANG = { 甲:5,乙:6,丙:8,丁:9,戊:8,己:9,庚:11,辛:0,壬:2,癸:3 }
-const TIANZHU = { 甲:5,乙:6,丙:2,丁:9,戊:8,己:11,庚:11,辛:11,壬:8,癸:5 }
+const TIANZHU = { 甲:5,乙:6,丙:5,丁:6,戊:8,己:9,庚:11,辛:0,壬:2,癸:3 }
 const LU = { 甲:2,乙:3,丙:5,丁:6,戊:5,己:6,庚:8,辛:9,壬:11,癸:0 }
 const YANGREN = { 甲:3,乙:2,丙:6,丁:5,戊:6,己:5,庚:9,辛:8,壬:0,癸:11 }
+const FEIREN = Object.fromEntries(Object.entries(YANGREN).map(([gan, idx]) => [gan, (idx + 6) % 12]))
+const TAIJI = { 甲:[0,6],乙:[0,6],丙:[3,9],丁:[3,9],戊:[1,4,7,10],己:[1,4,7,10],庚:[2,11],辛:[2,11],壬:[5,8],癸:[5,8] }
+const FUXING = { 甲:[2,0],乙:[1,11],丙:[2,0],丁:[11,9],戊:[8],己:[7],庚:[6],辛:[5],壬:[4],癸:[3] }
+const GUOYIN = { 甲:10,乙:11,丙:1,丁:2,戊:1,己:2,庚:4,辛:5,壬:7,癸:8 }
+const JINYU = { 甲:4,乙:5,丙:7,丁:8,戊:7,己:8,庚:10,辛:11,壬:1,癸:2 }
+const LIUXIA = { 甲:9,乙:10,丙:7,丁:8,戊:5,己:6,庚:4,辛:3,壬:11,癸:2 }
+const XUEREN = { 甲:3,乙:4,丙:6,丁:7,戊:6,己:7,庚:9,辛:10,壬:0,癸:1 }
+const XUETANG = { 甲:11,乙:6,丙:2,丁:9,戊:2,己:9,庚:5,辛:0,壬:8,癸:3 }
+const CIGUAN = { 甲:2,乙:3,丙:2,丁:5,戊:5,己:6,庚:8,辛:9,壬:11,癸:0 }
 // 桃花/驿马/将星/华盖 based on year or day Zhi trio
 function getSanHe(zhi) {
   const TRIO = { 申:0,子:0,辰:0, 寅:1,午:1,戌:1, 巳:2,酉:2,丑:2, 亥:3,卯:3,未:3 }
@@ -56,58 +66,106 @@ const YIMA_IDX    = [2,8,11,5]
 const JIANXING_IDX= [0,6,9,3]
 const HUAGAI_IDX  = [4,10,1,7]
 const JIESHA_IDX  = [5,11,2,8]
+const WANGSHEN_IDX = [11,5,8,2]
+const ZAISHA_IDX   = [6,0,3,9]
 
 const HONGYASHA = { 甲:6,乙:6,丙:2,丁:7,戊:4,己:4,庚:10,辛:9,壬:0,癸:8 }
 
-// 德秀贵人: based on month Zhi + dayGan combination (simplified: use month zhi check)
-// 天德: 正月戌, 二月申, 三月壬, 四月辛, 五月亥, 六月甲, 七月癸, 八月寅, 九月丙, 十月乙, 十一月午, 十二月庚
-const TIANDE_BY_MONTH = [10,8,'壬',9,11,'甲','癸',2,'丙','乙',6,'庚']
-// 月德: 寅午戌月壬, 申子辰月庚, 亥卯未月甲, 巳酉丑月丙
-const YUEDE = { 2:'壬',6:'壬',10:'壬', 0:'庚',8:'庚',4:'庚', 11:'甲',3:'甲',7:'甲', 5:'丙',9:'丙',1:'丙' }
+// 天德/月德以月令为准，寅月为正月。
+const TIANDE_BY_MONTH_ZHI = { 寅:'丁',卯:'申',辰:'壬',巳:'辛',午:'亥',未:'甲',申:'癸',酉:'寅',戌:'丙',亥:'乙',子:'巳',丑:'庚' }
+const YUEDE_BY_MONTH_GROUP = { 1:'丙',0:'壬',3:'甲',2:'庚' }
+const GAN_HE = { 甲:'己',己:'甲',乙:'庚',庚:'乙',丙:'辛',辛:'丙',丁:'壬',壬:'丁',戊:'癸',癸:'戊' }
+const ZHI_HE = { 子:'丑',丑:'子',寅:'亥',亥:'寅',卯:'戌',戌:'卯',辰:'酉',酉:'辰',巳:'申',申:'巳',午:'未',未:'午' }
+const HONG_LUAN = { 子:'卯',丑:'寅',寅:'丑',卯:'子',辰:'亥',巳:'戌',午:'酉',未:'申',申:'未',酉:'午',戌:'巳',亥:'辰' }
+const TIAN_XI = Object.fromEntries(Object.entries(HONG_LUAN).map(([zhi, hong]) => [zhi, ZHI[(ZHI.indexOf(hong) + 6) % 12]]))
+const GUCHEN = { 子:'寅',丑:'寅',亥:'寅', 寅:'巳',卯:'巳',辰:'巳', 巳:'申',午:'申',未:'申', 申:'亥',酉:'亥',戌:'亥' }
+const GUASU = { 子:'戌',丑:'戌',亥:'戌', 寅:'丑',卯:'丑',辰:'丑', 巳:'辰',午:'辰',未:'辰', 申:'未',酉:'未',戌:'未' }
+const YUANCHEN = { 子:'未',丑:'申',寅:'酉',卯:'戌',辰:'亥',巳:'戌',午:'丑',未:'子',申:'卯',酉:'寅',戌:'巳',亥:'辰' }
+const DEXIU_GROUP_RULES = {
+  0: { de:['壬','癸','戊','己'], xiu:['丙','辛','甲','己'] },
+  1: { de:['丙','丁'], xiu:['戊','癸'] },
+  2: { de:['庚','辛'], xiu:['乙','庚'] },
+  3: { de:['甲','乙'], xiu:['丁','壬'] }
+}
 
-export function getShenSha(dayGan, yearZhi, dayZhi, monthZhi) {
-  // Returns shensha array for a given zhi column
-  function forZhi(zhi) {
+function pushUnique(list, value) {
+  if (value && !list.includes(value)) list.push(value)
+}
+
+function hasIdx(table, gan, zi) {
+  const value = table[gan]
+  return Array.isArray(value) ? value.includes(zi) : value === zi
+}
+
+function matchMonthStar(rule, gan, zhi) {
+  if (!rule) return false
+  return GAN.includes(rule) ? gan === rule : zhi === rule
+}
+
+function matchMonthStarHe(rule, gan, zhi) {
+  if (!rule) return false
+  return GAN.includes(rule) ? gan === GAN_HE[rule] : zhi === ZHI_HE[rule]
+}
+
+export function getShenSha(dayGan, yearZhi, dayZhi, monthZhi, yearGan = '') {
+  const basisGans = [dayGan, yearGan].filter(Boolean)
+  const basisZhiGroups = [getSanHe(dayZhi), getSanHe(yearZhi)].filter(v => v !== undefined)
+  const deXiuRule = DEXIU_GROUP_RULES[getSanHe(monthZhi)]
+  const isDeXiuChart = !!deXiuRule && [...deXiuRule.de, ...deXiuRule.xiu].includes(dayGan)
+  const monthTianDe = TIANDE_BY_MONTH_ZHI[monthZhi]
+  const monthYueDe = YUEDE_BY_MONTH_GROUP[getSanHe(monthZhi)]
+  const dayXunKong = getXunKong(dayGan + dayZhi)
+
+  // Returns shensha array for a given pillar/branch column.
+  function forZhi(zhi, gan = '') {
     const result = []
     const zi = ZHI.indexOf(zhi)
 
-    // 天乙贵人
-    const ty = TIANYI[dayGan] || []
-    if (ty.includes(zi)) result.push('天乙贵人')
+    basisGans.forEach(bg => {
+      if ((TIANYI[bg] || []).includes(zi)) pushUnique(result, '天乙贵人')
+      if (hasIdx(WENCHANG, bg, zi)) pushUnique(result, '文昌贵人')
+      if (hasIdx(TIANZHU, bg, zi)) pushUnique(result, '天厨贵人')
+      if (hasIdx(TAIJI, bg, zi)) pushUnique(result, '太极贵人')
+      if (hasIdx(FUXING, bg, zi)) pushUnique(result, '福星贵人')
+      if (hasIdx(GUOYIN, bg, zi)) pushUnique(result, '国印贵人')
+      if (hasIdx(JINYU, bg, zi)) pushUnique(result, '金舆')
+    })
+    if (hasIdx(LIUXIA, dayGan, zi)) pushUnique(result, '流霞')
+    if (hasIdx(XUETANG, dayGan, zi)) pushUnique(result, '学堂')
+    if (hasIdx(CIGUAN, dayGan, zi)) pushUnique(result, '词馆')
 
-    // 文昌贵人
-    if (WENCHANG[dayGan] === zi) result.push('文昌贵人')
+    if (hasIdx(LU, dayGan, zi)) pushUnique(result, '禄神')
+    if (hasIdx(YANGREN, dayGan, zi)) pushUnique(result, '羊刃')
+    if (hasIdx(FEIREN, dayGan, zi)) pushUnique(result, '飞刃')
+    if (hasIdx(XUEREN, dayGan, zi)) pushUnique(result, '血刃')
+    if (hasIdx(HONGYASHA, dayGan, zi)) pushUnique(result, '红艳煞')
 
-    // 天厨贵人
-    if (TIANZHU[dayGan] === zi) result.push('天厨贵人')
+    basisZhiGroups.forEach(group => {
+      if (ZHI[TAOHUA_IDX[group]] === zhi) pushUnique(result, '桃花')
+      if (ZHI[YIMA_IDX[group]] === zhi) pushUnique(result, '驿马')
+      if (ZHI[JIANXING_IDX[group]] === zhi) pushUnique(result, '将星')
+      if (ZHI[HUAGAI_IDX[group]] === zhi) pushUnique(result, '华盖')
+      if (ZHI[JIESHA_IDX[group]] === zhi) pushUnique(result, '劫煞')
+      if (ZHI[WANGSHEN_IDX[group]] === zhi) pushUnique(result, '亡神')
+      if (ZHI[ZAISHA_IDX[group]] === zhi) pushUnique(result, '灾煞')
+    })
 
-    // 禄神
-    if (LU[dayGan] === zi) result.push('禄神')
+    if (isDeXiuChart) pushUnique(result, '德秀贵人')
+    if (matchMonthStar(monthTianDe, gan, zhi)) pushUnique(result, '天德贵人')
+    if (matchMonthStarHe(monthTianDe, gan, zhi)) pushUnique(result, '天德合')
+    if (matchMonthStar(monthYueDe, gan, zhi)) pushUnique(result, '月德贵人')
+    if (matchMonthStarHe(monthYueDe, gan, zhi)) pushUnique(result, '月德合')
 
-    // 羊刃
-    if (YANGREN[dayGan] === zi) result.push('羊刃')
-
-    // 桃花 (based on year zhi)
-    const yg = getSanHe(yearZhi)
-    if (yg !== undefined && ZHI.indexOf(ZHI[TAOHUA_IDX[yg]]) === zi) result.push('桃花')
-    // 桃花 (based on day zhi)
-    const dg = getSanHe(dayZhi)
-    if (dg !== undefined && ZHI.indexOf(ZHI[TAOHUA_IDX[dg]]) === zi && !result.includes('桃花')) result.push('桃花')
-
-    // 驿马
-    if (dg !== undefined && ZHI[YIMA_IDX[dg]] === zhi) result.push('驿马')
-
-    // 将星
-    if (dg !== undefined && ZHI[JIANXING_IDX[dg]] === zhi) result.push('将星')
-
-    // 华盖
-    if (dg !== undefined && ZHI[HUAGAI_IDX[dg]] === zhi) result.push('华盖')
-
-    // 劫煞
-    if (dg !== undefined && ZHI[JIESHA_IDX[dg]] === zhi) result.push('劫煞')
-
-    // 红艳煞
-    if (HONGYASHA[dayGan] === zi) result.push('红艳煞')
+    if (HONG_LUAN[yearZhi] === zhi) pushUnique(result, '红鸾')
+    if (TIAN_XI[yearZhi] === zhi) pushUnique(result, '天喜')
+    if (GUCHEN[yearZhi] === zhi) pushUnique(result, '孤辰')
+    if (GUASU[yearZhi] === zhi) pushUnique(result, '寡宿')
+    if (YUANCHEN[yearZhi] === zhi) pushUnique(result, '元辰')
+    if (ZHI[(ZHI.indexOf(yearZhi) + 2) % 12] === zhi) pushUnique(result, '丧门')
+    if (ZHI[(ZHI.indexOf(yearZhi) + 10) % 12] === zhi) pushUnique(result, '吊客')
+    if (ZHI[(ZHI.indexOf(yearZhi) + 9) % 12] === zhi) pushUnique(result, '披麻')
+    if (['辰', '巳'].includes(zhi)) pushUnique(result, '天罗地网')
+    if (dayXunKong.includes(zhi)) pushUnique(result, '空亡')
 
     return result
   }
@@ -172,14 +230,14 @@ export function calculateBazi(year, month, day, hour, minute, second, gender) {
   const startDay = yun.getStartDay()
   const dayunList = yun.getDaYun()
 
-  const shenShaFor = getShenSha(dayGan, yearZhi, dayZhi, monthZhi)
+  const shenShaFor = getShenSha(dayGan, yearZhi, dayZhi, monthZhi, yearGan)
 
   // Build pillars
   const pillars = [
-    { label: '年柱', gan: yearGan, zhi: yearZhi, ss: ec.getYearShiShenGan(), zhiSS: ec.getYearShiShenZhi(), hideGan: ec.getYearHideGan(), diShi: ec.getYearDiShi(), ziZuo: getDiShi(yearGan, yearZhi), xunKong: ec.getYearXunKong(), naYin: ec.getYearNaYin(), shenSha: shenShaFor(yearZhi) },
-    { label: '月柱', gan: monthGan, zhi: monthZhi, ss: ec.getMonthShiShenGan(), zhiSS: ec.getMonthShiShenZhi(), hideGan: ec.getMonthHideGan(), diShi: ec.getMonthDiShi(), ziZuo: getDiShi(monthGan, monthZhi), xunKong: ec.getMonthXunKong(), naYin: ec.getMonthNaYin(), shenSha: shenShaFor(monthZhi) },
-    { label: '日柱', gan: dayGan, zhi: dayZhi, ss: gender === 1 ? '元男' : '元女', zhiSS: ec.getDayShiShenZhi(), hideGan: ec.getDayHideGan(), diShi: ec.getDayDiShi(), ziZuo: getDiShi(dayGan, dayZhi), xunKong: ec.getDayXunKong(), naYin: ec.getDayNaYin(), shenSha: shenShaFor(dayZhi) },
-    { label: '时柱', gan: timeGan, zhi: timeZhi, ss: ec.getTimeShiShenGan(), zhiSS: ec.getTimeShiShenZhi(), hideGan: ec.getTimeHideGan(), diShi: ec.getTimeDiShi(), ziZuo: getDiShi(timeGan, timeZhi), xunKong: ec.getTimeXunKong(), naYin: ec.getTimeNaYin(), shenSha: shenShaFor(timeZhi) }
+    { label: '年柱', gan: yearGan, zhi: yearZhi, ss: ec.getYearShiShenGan(), zhiSS: ec.getYearShiShenZhi(), hideGan: ec.getYearHideGan(), diShi: ec.getYearDiShi(), ziZuo: getDiShi(yearGan, yearZhi), xunKong: ec.getYearXunKong(), naYin: ec.getYearNaYin(), shenSha: shenShaFor(yearZhi, yearGan) },
+    { label: '月柱', gan: monthGan, zhi: monthZhi, ss: ec.getMonthShiShenGan(), zhiSS: ec.getMonthShiShenZhi(), hideGan: ec.getMonthHideGan(), diShi: ec.getMonthDiShi(), ziZuo: getDiShi(monthGan, monthZhi), xunKong: ec.getMonthXunKong(), naYin: ec.getMonthNaYin(), shenSha: shenShaFor(monthZhi, monthGan) },
+    { label: '日柱', gan: dayGan, zhi: dayZhi, ss: gender === 1 ? '元男' : '元女', zhiSS: ec.getDayShiShenZhi(), hideGan: ec.getDayHideGan(), diShi: ec.getDayDiShi(), ziZuo: getDiShi(dayGan, dayZhi), xunKong: ec.getDayXunKong(), naYin: ec.getDayNaYin(), shenSha: shenShaFor(dayZhi, dayGan) },
+    { label: '时柱', gan: timeGan, zhi: timeZhi, ss: ec.getTimeShiShenGan(), zhiSS: ec.getTimeShiShenZhi(), hideGan: ec.getTimeHideGan(), diShi: ec.getTimeDiShi(), ziZuo: getDiShi(timeGan, timeZhi), xunKong: ec.getTimeXunKong(), naYin: ec.getTimeNaYin(), shenSha: shenShaFor(timeZhi, timeGan) }
   ]
 
   // Build 大运 list
@@ -202,7 +260,7 @@ export function calculateBazi(year, month, day, hour, minute, second, gender) {
       startAge: dy.getStartAge(),
       startYear: dy.getStartYear(),
       naYin: getNaYin(gz),
-      shenSha: shenShaFor(dyZhi),
+      shenSha: shenShaFor(dyZhi, dyGan),
       liunian: liunian.map(ln => {
         const lnGz = ln.getGanZhi()
         return {
@@ -211,7 +269,8 @@ export function calculateBazi(year, month, day, hour, minute, second, gender) {
           gan: lnGz[0],
           zhi: lnGz[1],
           ss: getShiShen(dayGan, lnGz[0]),
-          zhiSS: getShiShen(dayGan, getMainHideGan(lnGz[1]))
+          zhiSS: getShiShen(dayGan, getMainHideGan(lnGz[1])),
+          shenSha: shenShaFor(lnGz[1], lnGz[0])
         }
       }),
       xiaoyun: xiaoyun.map(xy => {
@@ -223,7 +282,8 @@ export function calculateBazi(year, month, day, hour, minute, second, gender) {
           gan: xyGz[0],
           zhi: xyGz[1],
           ss: getShiShen(dayGan, xyGz[0]),
-          zhiSS: getShiShen(dayGan, getMainHideGan(xyGz[1]))
+          zhiSS: getShiShen(dayGan, getMainHideGan(xyGz[1])),
+          shenSha: shenShaFor(xyGz[1], xyGz[0])
         }
       })
     })
@@ -274,7 +334,7 @@ export function calculateBazi(year, month, day, hour, minute, second, gender) {
         ziZuo: lyZiZuo,
         xunKong: lyXunKong,
         naYin: getNaYin(lyGan + lyZhi),
-        shenSha: shenShaFor(lyZhi)
+        shenSha: shenShaFor(lyZhi, lyGan)
       },
       {
         label: '大运',
@@ -287,7 +347,7 @@ export function calculateBazi(year, month, day, hour, minute, second, gender) {
         ziZuo: getDiShi(dyGan, dyZhi),
         xunKong: getXunKong(dyGan + dyZhi),
         naYin: getNaYin(dyGan + dyZhi),
-        shenSha: shenShaFor(dyZhi)
+        shenSha: shenShaFor(dyZhi, dyGan)
       },
       ...pillars
     ],
@@ -325,16 +385,17 @@ export function getXunKong(ganZhi) {
   const gi = GAN.indexOf(ganZhi[0])
   const zi = ZHI.indexOf(ganZhi[1])
   if (gi < 0 || zi < 0) return ''
-  // Find which 旬
-  const offset = ((zi - gi % 12 + 12) % 12)
-  const xunStart = (gi - gi % 10) // decade start in gan
-  const xunIdx = Math.floor(((gi + 60 - (zi - (gi % 2 === 0 ? 0 : 0))) % 60) / 10)
-  // Simplified: compute by ganZhi combined index
-  const combined = (gi * 12 + zi) % 60
+  let combined = -1
+  for (let i = 0; i < 60; i++) {
+    if (GAN[i % 10] === ganZhi[0] && ZHI[i % 12] === ganZhi[1]) {
+      combined = i
+      break
+    }
+  }
+  if (combined < 0) return ''
   const xunGroupStart = combined - (combined % 10)
-  const kongStart = (xunGroupStart + 10) % 60
-  const z1 = kongStart % 12
-  const z2 = (kongStart + 1) % 12
+  const z1 = (xunGroupStart + 10) % 12
+  const z2 = (xunGroupStart + 11) % 12
   return ZHI[z1] + ZHI[z2]
 }
 
