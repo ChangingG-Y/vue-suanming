@@ -102,57 +102,98 @@ const cols = computed(() => props.data.tableColumns)
 .bazi-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: 13px;
 }
 .bazi-table th, .bazi-table td {
-  border: 1px solid #e8e0cc;
-  padding: 7px 8px;
+  border: 1px solid rgba(210, 172, 100, 0.28);
+  padding: 4px 5px;
   text-align: center;
   vertical-align: top;
-  min-width: 72px;
+  min-width: 58px;
 }
 .bazi-table th {
-  background: #f5f0e8;
-  color: #5a4c3b;
+  background: rgba(240, 228, 200, 0.6);
+  backdrop-filter: blur(4px);
+  color: #4a3c2c;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
+  padding: 7px 5px;
+  letter-spacing: 0.02em;
 }
+/* 首列（行标签）圆角 */
+.bazi-table thead tr th:first-child { border-radius: 8px 0 0 0; }
+.bazi-table thead tr th:last-child  { border-radius: 0 8px 0 0; }
+
 .row-label {
-  background: #fafaf8;
+  background: rgba(248, 244, 236, 0.55);
   color: #8a7a66;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
   text-align: right;
-  padding-right: 8px;
-  width: 36px;
+  padding-right: 6px;
+  width: 30px;
+  min-width: unset;
 }
-.day-col { background: #fffdf5; }
+/* 分区背景 — 天干/地支主区 */
+.bazi-table tbody tr:nth-child(1) td { background: rgba(255, 252, 242, 0.45); }
+.bazi-table tbody tr:nth-child(2) td,
+.bazi-table tbody tr:nth-child(3) td { background: transparent; }
+/* 藏干微区分 */
+.bazi-table tbody tr:nth-child(4) td {
+  background: rgba(245, 236, 216, 0.38);
+  border-top: 1px solid rgba(200, 158, 80, 0.35);
+  border-bottom: 1px solid rgba(200, 158, 80, 0.35);
+}
+/* 小字信息区 */
+.bazi-table tbody tr:nth-child(5) td,
+.bazi-table tbody tr:nth-child(6) td,
+.bazi-table tbody tr:nth-child(7) td,
+.bazi-table tbody tr:nth-child(8) td { background: rgba(250, 246, 238, 0.38); }
+/* 神煞区 */
+.bazi-table tbody tr:nth-child(9) td {
+  background: rgba(255, 250, 236, 0.45);
+  border-top: 1px solid rgba(200, 158, 80, 0.3);
+}
+/* 日柱高亮列 */
+.day-col { background: rgba(255, 252, 230, 0.65) !important; }
+.bazi-table th.day-col { background: rgba(248, 235, 180, 0.7) !important; }
+
 .cell-gan, .cell-zhi {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: bold;
-  padding: 8px 4px;
+  padding: 5px 4px;
+  background: transparent !important;
 }
 .cell-center { vertical-align: middle; }
-.small-text { font-size: 14px; color: #4d4438; }
-.cell-hidegan { vertical-align: top; padding: 4px; }
+.small-text { font-size: 12px; color: #4d4438; }
+.cell-hidegan { vertical-align: top; padding: 3px 4px; }
 .hide-gan-row {
   display: flex;
   justify-content: center;
-  gap: 3px;
-  font-size: 14px;
-  line-height: 1.65;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.5;
 }
-.hide-ss { font-size: 13px; }
-.cell-shensha { vertical-align: top; }
-.shensha-item { font-size: 13px; color: #8d6830; white-space: nowrap; line-height: 1.75; }
+.hide-ss { font-size: 11px; }
+.cell-shensha { vertical-align: top; padding: 3px 4px; }
+.shensha-item { font-size: 12px; color: #8d6830; white-space: nowrap; line-height: 1.55; }
 .bottom-info {
   display: flex;
-  gap: 20px;
-  padding: 8px 0;
-  font-size: 13px;
-  color: #887865;
+  gap: 14px;
+  padding: 8px 2px 2px;
+  font-size: 11px;
+  color: rgba(130, 105, 75, 0.8);
   justify-content: flex-end;
   flex-wrap: wrap;
+  border-top: 1px solid rgba(210, 172, 100, 0.22);
+  margin-top: 6px;
+}
+.bottom-info span {
+  background: rgba(248, 238, 210, 0.6);
+  border: 1px solid rgba(210, 172, 100, 0.25);
+  border-radius: 999px;
+  padding: 2px 10px;
+  letter-spacing: 0.02em;
 }
 </style>

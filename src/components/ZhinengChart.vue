@@ -199,9 +199,17 @@ const liuqinRows = computed(() => {
 </script>
 
 <style scoped>
-.zhineng-wrap { background: #fff; border-radius: 8px; padding: 0; }
-.chart-title { font-size: 15px; font-weight: bold; text-align: center; padding: 12px; border-bottom: 1px solid #eee; }
-.chart-tabs { padding: 0 12px; }
+.zhineng-wrap { background: transparent; border-radius: 0; padding: 0; }
+.chart-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  padding: 13px;
+  border-bottom: 1px solid rgba(210, 172, 100, 0.28);
+  color: #3a2810;
+  letter-spacing: 0.04em;
+}
+.chart-tabs { padding: 0 14px; }
 
 /* 干支 */
 .ganzhi-layout { display: flex; justify-content: space-around; padding: 20px 0; gap: 8px; }
@@ -241,7 +249,14 @@ const liuqinRows = computed(() => {
 .text-muted { color: #aaa; }
 .gw-gan, .gw-zhi { font-size: 28px; font-weight: bold; }
 .gongwei-info-grid { display: flex; flex-direction: column; gap: 12px; }
-.gi-block { border: 1px solid #e8e0cc; border-radius: 8px; padding: 10px; }
+.gi-block {
+  background: rgba(255, 250, 238, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(210, 172, 100, 0.3);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(100, 65, 20, 0.06);
+}
 .gi-title { font-size: 12px; color: #8b6914; margin-bottom: 8px; font-weight: bold; }
 .gi-row { display: flex; justify-content: space-around; font-size: 12px; color: #555; text-align: center; }
 .gi-row span { flex: 1; }

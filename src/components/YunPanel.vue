@@ -118,24 +118,27 @@ const wuxingItems = [
 </script>
 
 <style scoped>
-.yun-panel { padding: 8px; }
+.yun-panel { padding: 10px 12px 12px; }
 .qiyun-info {
   font-size: 12px;
   color: #555;
-  margin-bottom: 8px;
-  padding: 6px 8px;
-  background: #fafaf8;
-  border-radius: 4px;
+  margin-bottom: 10px;
+  padding: 7px 12px;
+  background: rgba(248, 240, 220, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(210, 172, 100, 0.28);
+  border-radius: 10px;
 }
 .info-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.label { color: #888; }
+.label { color: #8a7a66; }
 .age-badge {
   margin-left: auto;
-  background: #8b6914;
+  background: linear-gradient(135deg, #7a5a10, #a8800e);
   color: #fff;
-  border-radius: 10px;
-  padding: 1px 8px;
+  border-radius: 999px;
+  padding: 2px 10px;
   font-size: 11px;
+  box-shadow: 0 2px 6px rgba(120, 80, 10, 0.25);
 }
 .dayun-scroll, .liunian-scroll { overflow-x: auto; }
 .dayun-table, .liunian-table {
@@ -144,52 +147,57 @@ const wuxingItems = [
   white-space: nowrap;
 }
 .dayun-table td, .liunian-table td {
-  border: 1px solid #e8e0cc;
+  border: 1px solid rgba(210, 172, 100, 0.28);
   padding: 3px 6px;
   text-align: center;
   min-width: 44px;
 }
 .row-head {
-  background: #f5f0e8;
-  color: #888;
+  background: rgba(240, 228, 200, 0.5);
+  color: #8a7a66;
   font-size: 11px;
   padding: 3px 6px;
   white-space: nowrap;
 }
-.active { background: #fffbf0; font-weight: bold; }
-.ln-year.active { background: #fffbf0; color: #8b6914; }
+.active { background: rgba(255, 248, 220, 0.7); font-weight: bold; }
+.ln-year.active { background: rgba(255, 248, 220, 0.7); color: #8b6914; }
 .dayun-year.active { color: #8b6914; font-weight: bold; }
-.age-label { font-size: 11px; color: #888; }
+.age-label { font-size: 11px; color: #8a7a66; }
 .gan-cell, .zhi-cell { font-size: 15px; }
-.ss-tag { font-size: 10px; color: #888; vertical-align: super; }
+.ss-tag { font-size: 10px; color: #999; vertical-align: super; }
 .section-title {
   font-size: 12px;
-  color: #555;
-  padding: 6px 0 4px;
+  color: #665544;
+  padding: 8px 0 4px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .dy-label { color: #8b6914; font-weight: bold; }
-.section-subtitle { color: #888; margin-left: auto; }
+.section-subtitle { color: #9a8a78; margin-left: auto; }
 .liunian-section { margin-top: 8px; }
 .wuxing-bar {
   display: flex;
-  margin-top: 12px;
-  border-radius: 4px;
+  margin-top: 14px;
+  border-radius: 10px;
   overflow: hidden;
   font-size: 12px;
+  gap: 2px;
+  padding: 0 1px;
 }
 .wx-item {
   flex: 1;
   text-align: center;
-  padding: 4px 2px;
-  color: #fff;
+  padding: 5px 2px;
+  color: rgba(255,255,255,0.92);
   font-size: 11px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
-.wx-water  { background: #2271b8; }
-.wx-wood   { background: #3c8a2e; }
-.wx-metal  { background: #888; }
-.wx-earth  { background: #a0522d; }
-.wx-fire   { background: #c0392b; }
+.wx-water  { background: linear-gradient(135deg, #1a5fa8, #2b7fd6); }
+.wx-wood   { background: linear-gradient(135deg, #2d7020, #48a032); }
+.wx-metal  { background: linear-gradient(135deg, #6a6a6a, #909090); }
+.wx-earth  { background: linear-gradient(135deg, #8a3e20, #b55a30); }
+.wx-fire   { background: linear-gradient(135deg, #a82820, #d43c30); }
 </style>

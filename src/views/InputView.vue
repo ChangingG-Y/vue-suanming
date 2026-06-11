@@ -240,9 +240,11 @@ function formatDate(timestamp) {
   align-items: center;
   justify-content: center;
   background:
-    linear-gradient(135deg, rgba(38, 30, 24, 0.96), rgba(64, 37, 24, 0.92)),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 76px),
-    #211b17;
+    radial-gradient(ellipse at 18% 38%, rgba(190, 118, 48, 0.32) 0%, transparent 52%),
+    radial-gradient(ellipse at 80% 18%, rgba(148, 82, 28, 0.24) 0%, transparent 48%),
+    radial-gradient(ellipse at 55% 84%, rgba(100, 55, 18, 0.2) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(60, 30, 10, 0.15) 0%, transparent 70%),
+    #130e09;
   padding: 34px;
 }
 
@@ -250,16 +252,21 @@ function formatDate(timestamp) {
   width: min(1080px, 100%);
   display: grid;
   grid-template-columns: minmax(0, 620px) 340px;
-  gap: 22px;
+  gap: 20px;
   align-items: stretch;
 }
 
 .input-panel,
 .history-panel {
-  background: rgba(255, 252, 246, 0.97);
-  border: 1px solid rgba(244, 211, 154, 0.38);
-  border-radius: 14px;
-  box-shadow: 0 28px 70px rgba(18, 12, 8, 0.34);
+  background: rgba(255, 252, 244, 0.84);
+  backdrop-filter: blur(32px) saturate(1.6);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
+  border: 1px solid rgba(244, 211, 154, 0.48);
+  border-radius: 22px;
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.95) inset,
+    0 36px 88px rgba(10, 6, 2, 0.52),
+    0 8px 24px rgba(10, 6, 2, 0.24);
 }
 
 .input-panel {
@@ -270,36 +277,38 @@ function formatDate(timestamp) {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 30px;
+  margin-bottom: 28px;
 }
 
 .brand-mark {
-  width: 58px;
-  height: 58px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffd88a;
-  background:
-    linear-gradient(145deg, #2c1b13, #8a4f21);
-  border: 1px solid #d9a64d;
-  border-radius: 12px;
-  font-size: 28px;
+  background: linear-gradient(145deg, #2c1b13, #8a4f21);
+  border: 1px solid rgba(217, 166, 77, 0.7);
+  border-radius: 16px;
+  font-size: 27px;
   font-weight: 900;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 12px 26px rgba(91, 53, 25, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    0 0 28px rgba(255, 190, 70, 0.2),
+    0 10px 24px rgba(91, 53, 25, 0.3);
 }
 
 .card-header h1 {
-  font-size: 34px;
-  color: #211814;
-  margin-bottom: 6px;
+  font-size: 32px;
+  color: #1e140f;
+  margin-bottom: 5px;
   letter-spacing: 0;
   font-weight: 900;
 }
 
 .card-header p {
-  color: #716255;
-  font-size: 15px;
+  color: #6d5e52;
+  font-size: 14px;
   line-height: 1.65;
 }
 
@@ -329,16 +338,27 @@ function formatDate(timestamp) {
 .submit-button {
   width: 100%;
   height: 48px;
-  background: #8d4e22;
-  border-color: #8d4e22;
+  background: linear-gradient(135deg, #8d4e22, #b5621c);
+  border-color: transparent;
   border-radius: 10px;
   font-size: 16px;
   font-weight: 800;
+  letter-spacing: 0.04em;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  box-shadow: 0 6px 20px rgba(141, 78, 34, 0.35);
 }
 
 .submit-button:hover {
-  background: #a96127;
-  border-color: #a96127;
+  background: linear-gradient(135deg, #a05828, #c97020);
+  border-color: transparent;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(141, 78, 34, 0.45);
+  filter: brightness(1.05);
+}
+
+.submit-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(141, 78, 34, 0.3);
 }
 
 .quick-examples {
@@ -353,13 +373,26 @@ function formatDate(timestamp) {
   background: #fff8e9;
   color: #7c4a18;
   border-radius: 999px;
-  padding: 8px 13px;
+  padding: 7px 14px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.quick-examples button:hover {
+  background: #fff0d0;
+  border-color: #c49530;
+  color: #5a3210;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(141, 78, 34, 0.15);
+}
+
+.quick-examples button:active {
+  transform: translateY(0);
 }
 
 .history-panel {
-  padding: 24px;
+  padding: 22px 22px;
   display: flex;
   flex-direction: column;
   min-height: 420px;
@@ -370,7 +403,7 @@ function formatDate(timestamp) {
   align-items: center;
   justify-content: space-between;
   padding-bottom: 14px;
-  border-bottom: 1px solid #ece4d4;
+  border-bottom: 1px solid rgba(200, 165, 100, 0.3);
 }
 
 .history-title {
@@ -394,17 +427,21 @@ function formatDate(timestamp) {
 .history-item {
   position: relative;
   width: 100%;
-  border: 1px solid #eee4cf;
-  border-radius: 10px;
-  background: #fffdf8;
-  padding: 13px 40px 13px 14px;
+  border: 1px solid rgba(218, 184, 118, 0.45);
+  border-radius: 13px;
+  background: rgba(255, 253, 246, 0.65);
+  backdrop-filter: blur(8px);
+  padding: 11px 38px 11px 14px;
   text-align: left;
   cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.16s ease;
 }
 
 .history-item:hover {
-  border-color: #c7a84a;
-  background: #fffaf0;
+  border-color: rgba(192, 152, 60, 0.7);
+  background: rgba(255, 250, 234, 0.85);
+  box-shadow: 0 6px 18px rgba(130, 72, 22, 0.14);
+  transform: translateX(2px);
 }
 
 .history-main {
@@ -442,11 +479,13 @@ function formatDate(timestamp) {
   justify-content: center;
   color: #9b6b61;
   border-radius: 50%;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
 .delete-history:hover {
   color: #fff;
   background: #c0392b;
+  transform: scale(1.15);
 }
 
 .empty-history {
@@ -476,9 +515,12 @@ function formatDate(timestamp) {
     grid-template-columns: 1fr;
   }
 
-  .input-panel,
+  .input-panel {
+    padding: 24px 20px;
+  }
+
   .history-panel {
-    padding: 20px 16px;
+    padding: 20px;
   }
 }
 
