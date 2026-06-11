@@ -51,10 +51,18 @@
           <section class="ai-options">
             <el-form label-position="top" size="small">
               <el-form-item label="模型">
-                <el-select v-model="aiOptions.model" class="option-control">
-                  <el-option label="V4 Pro" value="deepseek-v4-pro" />
-                  <el-option label="V4 Flash" value="deepseek-v4-flash" />
-                </el-select>
+                <div class="provider-model-row">
+                  <el-segmented v-model="aiOptions.provider" :options="providerOptions" class="provider-control" />
+                  <el-select v-model="aiOptions.model" class="option-control">
+                    <el-option
+                      v-for="model in currentModelOptions"
+                      :key="model.value"
+                      :label="model.label"
+                      :value="model.value"
+                    />
+                  </el-select>
+                </div>
+                <div class="model-hint">{{ currentModelDescription }}</div>
               </el-form-item>
               <div class="option-row">
                 <div class="option-label">思考模式</div>
@@ -153,7 +161,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound, Close, Lock, Promotion } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'
@@ -184,10 +192,28 @@ const loginForm = reactive({
 })
 
 const aiOptions = reactive({
+  provider: 'deepseek',
   model: 'deepseek-v4-flash',
   thinkingEnabled: false,
   reasoningEffort: 'high'
 })
+
+const providerOptions = [
+  { label: 'DeepSeek', value: 'deepseek' },
+  { label: '豆包', value: 'doubao' }
+]
+
+const modelOptions = {
+  deepseek: [
+    { label: 'DeepSeek · V4 Flash', value: 'deepseek-v4-flash', desc: '速度优先，适合日常快速问盘。' },
+    { label: 'DeepSeek · V4 Pro', value: 'deepseek-v4-pro', desc: '质量优先，适合复杂大运流年分析。' }
+  ],
+  doubao: [
+    { label: '豆包 · Seed 2.0 Mini', value: 'doubao-seed-2-0-mini-260428', desc: '轻量低成本，适合快速问答。' },
+    { label: '豆包 · Seed 2.0 Pro', value: 'doubao-seed-2-0-pro-260215', desc: '旗舰通用模型，适合复杂分析。' },
+    { label: '豆包 · Seed 2.0 Lite', value: 'doubao-seed-2-0-lite-260428', desc: '均衡模型，适合稳定长文本回答。' }
+  ]
+}
 
 const reasoningOptions = [
   { label: 'High', value: 'high' },
@@ -225,6 +251,15 @@ const quickPrompts = [
 
 const drawerSize = computed(() => (viewportWidth.value <= 640 ? '100%' : '560px'))
 const currentRole = computed(() => roles.value.find(role => role.id === currentRoleId.value) || roles.value[0])
+const currentModelOptions = computed(() => modelOptions[aiOptions.provider] || modelOptions.deepseek)
+const currentModelDescription = computed(() => currentModelOptions.value.find(item => item.value === aiOptions.model)?.desc || '')
+
+watch(() => aiOptions.provider, provider => {
+  const options = modelOptions[provider] || modelOptions.deepseek
+  if (!options.some(item => item.value === aiOptions.model)) {
+    aiOptions.model = options[0].value
+  }
+})
 
 onMounted(() => {
   window.addEventListener('resize', updateViewportWidth)
@@ -303,6 +338,7 @@ async function handleSend() {
       question: content,
       baziContext: buildBaziPayload(props.form, props.data),
       history,
+      provider: aiOptions.provider,
       model: aiOptions.model,
       thinkingEnabled: aiOptions.thinkingEnabled,
       reasoningEffort: aiOptions.reasoningEffort,
@@ -505,6 +541,24 @@ async function scrollToBottom() {
 
 .option-control {
   width: 100%;
+}
+
+.provider-model-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 164px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.provider-control {
+  width: 100%;
+}
+
+.model-hint {
+  margin-top: 6px;
+  color: #8a735b;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .option-row {
@@ -722,6 +776,10 @@ async function scrollToBottom() {
     bottom: 16px;
     width: 50px;
     height: 50px;
+  }
+
+  .provider-model-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

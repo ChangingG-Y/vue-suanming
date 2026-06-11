@@ -28,10 +28,10 @@ export async function checkAiSession() {
   return request('/auth/session', { method: 'GET' })
 }
 
-export async function sendAiChat({ question, baziContext, history, model, thinkingEnabled, reasoningEffort, systemPrompt, signal }) {
+export async function sendAiChat({ question, baziContext, history, provider, model, thinkingEnabled, reasoningEffort, systemPrompt, signal }) {
   return request('/ai/chat', {
     method: 'POST',
-    body: { question, baziContext, history, model, thinkingEnabled, reasoningEffort, systemPrompt },
+    body: { question, baziContext, history, provider, model, thinkingEnabled, reasoningEffort, systemPrompt },
     signal
   })
 }
