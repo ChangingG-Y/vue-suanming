@@ -54,8 +54,9 @@
             </el-alert>
           </div>
 
-          <el-button type="primary" size="large" class="submit-button" @click="submit">
-            开始排盘
+          <el-button type="primary" size="large" class="submit-button" :loading="submitting" @click="submit">
+            <span v-if="!submitting">开始排盘</span>
+            <span v-else>排盘中…</span>
           </el-button>
         </el-form>
 
@@ -94,8 +95,16 @@
         </div>
 
         <div v-else class="empty-history">
-          <div class="empty-line"></div>
-          <p>完成排盘后会自动保存到这里。</p>
+          <svg class="empty-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="40" cy="40" r="36" stroke="rgba(200,160,80,0.25)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="40" cy="40" r="1.5" fill="rgba(200,160,80,0.5)"/>
+            <line x1="40" y1="40" x2="40" y2="18" stroke="rgba(200,160,80,0.6)" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="40" y1="40" x2="54" y2="48" stroke="rgba(200,160,80,0.4)" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="40" cy="40" r="24" stroke="rgba(200,160,80,0.15)" stroke-width="1"/>
+            <path d="M28 56 Q40 62 52 56" stroke="rgba(200,160,80,0.3)" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+            <text x="40" y="72" text-anchor="middle" font-size="7" fill="rgba(160,120,60,0.5)" font-family="serif">命运</text>
+          </svg>
+          <p class="empty-text">完成排盘后<br>自动保存到这里</p>
         </div>
       </aside>
     </main>
@@ -111,6 +120,8 @@ import { calculateBazi } from '../utils/bazi.js'
 const emit = defineEmits(['submit'])
 const HISTORY_KEY = 'suanming_bazi_history'
 const MAX_HISTORY = 12
+
+const submitting = ref(false)
 
 const form = ref({
   name: '',
@@ -166,15 +177,20 @@ function submit() {
     ElMessage.warning('请选择出生日期')
     return
   }
-  const [y, m, d] = form.value.birthday.split('-').map(Number)
-  try {
-    const savedForm = { ...form.value }
-    const data = calculateBazi(y, m, d, savedForm.hour, 0, 0, savedForm.gender)
-    saveHistory(savedForm)
-    emit('submit', { data, form: savedForm })
-  } catch (e) {
-    ElMessage.error('排盘失败：' + e.message)
-  }
+  submitting.value = true
+  setTimeout(() => {
+    const [y, m, d] = form.value.birthday.split('-').map(Number)
+    try {
+      const savedForm = { ...form.value }
+      const data = calculateBazi(y, m, d, savedForm.hour, 0, 0, savedForm.gender)
+      saveHistory(savedForm)
+      emit('submit', { data, form: savedForm })
+    } catch (e) {
+      ElMessage.error('排盘失败：' + e.message)
+    } finally {
+      submitting.value = false
+    }
+  }, 320)
 }
 
 function loadHistory(item) {
@@ -490,19 +506,29 @@ function formatDate(timestamp) {
 
 .empty-history {
   flex: 1;
-  display: grid;
-  place-items: center;
-  color: #83796b;
-  text-align: center;
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 0;
 }
-
-.empty-line {
-  width: 54px;
-  height: 3px;
-  margin: 0 auto 10px;
-  background: #d4ae46;
-  border-radius: 999px;
+.empty-icon {
+  width: 72px;
+  height: 72px;
+  opacity: 0.9;
+  animation: clock-spin 12s linear infinite;
+  transform-origin: center;
+}
+@keyframes clock-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.empty-text {
+  color: rgba(120, 95, 65, 0.6);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.7;
 }
 
 @media (max-width: 920px) {

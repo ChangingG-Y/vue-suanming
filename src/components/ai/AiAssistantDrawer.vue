@@ -102,10 +102,20 @@
 
               <div v-if="roleEditorVisible" class="role-editor">
                 <el-input v-model="roleDraft.name" placeholder="角色名称" maxlength="20" />
+                <div class="role-prompt-header">
+                  <span class="role-prompt-label">系统提示词</span>
+                  <button class="expand-prompt-btn" type="button" @click="roleExpandVisible = true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                      <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                    展开编辑
+                  </button>
+                </div>
                 <el-input
                   v-model="roleDraft.prompt"
                   type="textarea"
-                  :rows="6"
+                  :rows="5"
                   resize="vertical"
                   maxlength="12000"
                   show-word-limit
@@ -223,6 +233,45 @@
         </div>
       </transition>
     </teleport>
+
+    <!-- 角色提示词展开编辑弹层 -->
+    <teleport to="body">
+      <transition name="expand-fade">
+        <div v-if="roleExpandVisible" class="expand-overlay" @click.self="roleExpandVisible = false">
+          <div class="expand-panel role-expand-panel">
+            <div class="expand-header">
+              <div class="role-expand-title-wrap">
+                <span class="expand-title">编辑系统提示词</span>
+                <span class="role-expand-name">{{ roleDraft.name || '角色' }}</span>
+              </div>
+              <div class="expand-header-actions">
+                <button class="expand-action-btn" type="button" @click="saveRoleAndClose">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  保存
+                </button>
+                <button class="expand-close-btn" type="button" @click="roleExpandVisible = false" aria-label="关闭">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="role-expand-body">
+              <textarea
+                v-model="roleDraft.prompt"
+                class="role-expand-textarea"
+                maxlength="12000"
+                placeholder="请输入这个角色的系统提示词..."
+                spellcheck="false"
+              ></textarea>
+              <div class="role-expand-count">{{ roleDraft.prompt.length }} / 12000</div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
   </div>
 </template>
 
@@ -253,6 +302,7 @@ const currentRoleId = ref('')
 const roleEditorVisible = ref(false)
 const expandVisible = ref(false)
 const expandContent = ref('')
+const roleExpandVisible = ref(false)
 const optionsCollapsed = ref(typeof window === 'undefined' ? false : window.innerWidth <= 640)
 
 const loginForm = reactive({ username: '小新', password: '' })
@@ -459,6 +509,11 @@ function deleteCurrentRole() {
 
 function resetRolePrompt() { roleDraft.prompt = DEFAULT_ROLE_PROMPT }
 
+function saveRoleAndClose() {
+  roleExpandVisible.value = false
+  // prompt is already bound to roleDraft.prompt via v-model, nothing extra needed
+}
+
 function readRoles() {
   try {
     const raw = localStorage.getItem(ROLE_STORAGE_KEY)
@@ -611,6 +666,28 @@ async function scrollToBottom() {
   box-shadow: 0 2px 0 rgba(255,255,255,0.85) inset;
   margin-bottom: 4px;
 }
+.role-prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: -4px;
+}
+.role-prompt-label { font-size: 12px; color: #7a6040; font-weight: 700; }
+.expand-prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  background: rgba(255,244,220,0.8);
+  border: 1px solid rgba(200,160,80,0.35);
+  border-radius: 999px;
+  color: #7a5010;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.13s;
+}
+.expand-prompt-btn:hover { background: rgba(255,240,200,0.95); transform: translateY(-1px); }
 .role-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .role-action-spacer { flex: 1; }
 
@@ -687,8 +764,8 @@ async function scrollToBottom() {
 .message-content {
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.8;
-  font-size: 14px;
+  line-height: 1.85;
+  font-size: 15px;
   color: #26180e;
   background: rgba(255,255,255,0.76);
   backdrop-filter: blur(14px);
@@ -929,5 +1006,49 @@ async function scrollToBottom() {
     from { transform: scale(0.94) translateY(16px); opacity: 0; }
     to   { transform: scale(1)    translateY(0);    opacity: 1; }
   }
+}
+
+/* ── 角色提示词展开编辑 ── */
+.role-expand-panel { display: flex; flex-direction: column; height: 82vh; }
+.role-expand-title-wrap {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.role-expand-name {
+  font-size: 11px; color: rgba(255,195,80,0.65);
+  letter-spacing: 0.04em;
+}
+.role-expand-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px 20px 20px;
+}
+.role-expand-textarea {
+  flex: 1;
+  width: 100%;
+  resize: none;
+  border: 1.5px solid rgba(200,158,80,0.38);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #2a1c10;
+  background: rgba(255,252,242,0.92);
+  outline: none;
+  transition: border-color 0.16s;
+  min-height: 0;
+  caret-color: #a86c1a;
+}
+.role-expand-textarea:focus {
+  border-color: rgba(180,130,40,0.65);
+  box-shadow: 0 0 0 3px rgba(180,130,40,0.1);
+}
+.role-expand-count {
+  margin-top: 7px;
+  text-align: right;
+  font-size: 11px;
+  color: #a09070;
 }
 </style>
