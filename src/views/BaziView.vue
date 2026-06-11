@@ -4,8 +4,8 @@
     <div class="bazi-header">
       <div class="header-left">
         <div class="logo-area">
-          <span class="logo-icon">☯</span>
-          <span class="site-name">八字排盘</span>
+          <span class="logo-icon">胡</span>
+          <span class="site-name">胡桃排盘</span>
         </div>
         <div class="birth-info">
           <div>阴历：{{ data.lunarDesc }} （{{ form.gender === 1 ? '乾造' : '坤造' }}）</div>
@@ -87,63 +87,86 @@ function pad(n) { return String(n).padStart(2, '0') }
 </script>
 
 <style scoped>
-.bazi-view { background: #f4f1e8; min-height: 100vh; padding-bottom: 40px; }
+.bazi-view {
+  background:
+    linear-gradient(180deg, #f7f0e5 0, #f3eadb 280px, #f5f0e8 100%);
+  min-height: 100vh;
+  padding-bottom: 42px;
+}
 
 .bazi-header {
-  background: #1f1f1f;
+  background:
+    linear-gradient(135deg, rgba(38, 30, 24, 0.98), rgba(89, 52, 29, 0.95)),
+    #1f1f1f;
   color: #fff;
-  padding: 12px 20px;
+  padding: 16px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
 }
-.header-left { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-.logo-area { display: flex; align-items: center; gap: 8px; }
-.logo-icon { font-size: 28px; color: #c9a227; }
-.site-name { font-size: 18px; font-weight: bold; color: #c9a227; }
-.birth-info { font-size: 13px; color: #ccc; line-height: 1.7; }
-.person-name { color: #c9a227; font-size: 15px; }
+.header-left { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.logo-area { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: #ffd88a;
+  background: rgba(255, 232, 179, 0.12);
+  border: 1px solid rgba(255, 216, 138, 0.42);
+  font-size: 21px;
+  font-weight: 900;
+}
+.site-name { font-size: 22px; font-weight: 900; color: #f1c86b; }
+.birth-info { font-size: 14px; color: #eadfd2; line-height: 1.75; }
+.person-name { color: #ffd88a; font-size: 16px; font-weight: 800; }
 .header-right { display: flex; align-items: center; gap: 10px; }
 
 .main-content {
   display: flex;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 16px;
   align-items: flex-start;
   flex-wrap: wrap;
 }
 .table-panel {
   flex: 1 1 100%;
-  background: #fff;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: #fffdf8;
+  border: 1px solid #eadcc6;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 18px 42px rgba(80, 54, 27, 0.12);
   min-width: 0;
 }
 
 .yun-section {
-  margin: 0 12px 12px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin: 0 16px 14px;
+  background: #fffdf8;
+  border: 1px solid #eadcc6;
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(80, 54, 27, 0.1);
   overflow-x: auto;
 }
 
 .zhineng-section {
-  margin: 0 12px 12px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin: 0 16px 14px;
+  background: #fffdf8;
+  border: 1px solid #eadcc6;
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(80, 54, 27, 0.1);
 }
 
 .settings-section {
-  margin: 0 12px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  padding: 0 12px 12px;
+  margin: 0 16px;
+  background: #fffdf8;
+  border: 1px solid #eadcc6;
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(80, 54, 27, 0.1);
+  padding: 0 14px 14px;
 }
 
 @media (max-width: 860px) {

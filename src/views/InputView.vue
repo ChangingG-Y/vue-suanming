@@ -3,10 +3,10 @@
     <main class="input-shell">
       <section class="input-panel">
         <div class="card-header">
-          <div class="brand-mark">八</div>
+          <div class="brand-mark">胡</div>
           <div>
-            <h1>八字排盘</h1>
-            <p>录入出生信息，生成命盘后可直接进入 AI 问答。</p>
+            <h1>胡桃排盘</h1>
+            <p>给胡桃大师准备的命盘工具，排盘后可直接进入 AI 问答。</p>
           </div>
         </div>
 
@@ -240,70 +240,87 @@ function formatDate(timestamp) {
   align-items: center;
   justify-content: center;
   background:
-    linear-gradient(135deg, rgba(17, 24, 39, 0.94), rgba(34, 34, 32, 0.9)),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 72px),
-    #151515;
-  padding: 28px;
+    linear-gradient(135deg, rgba(38, 30, 24, 0.96), rgba(64, 37, 24, 0.92)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 76px),
+    #211b17;
+  padding: 34px;
 }
 
 .input-shell {
   width: min(1080px, 100%);
   display: grid;
   grid-template-columns: minmax(0, 620px) 340px;
-  gap: 18px;
+  gap: 22px;
   align-items: stretch;
 }
 
 .input-panel,
 .history-panel {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  background: rgba(255, 252, 246, 0.97);
+  border: 1px solid rgba(244, 211, 154, 0.38);
+  border-radius: 14px;
+  box-shadow: 0 28px 70px rgba(18, 12, 8, 0.34);
 }
 
 .input-panel {
-  padding: 34px;
+  padding: 38px;
 }
 
 .card-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 28px;
+  gap: 16px;
+  margin-bottom: 30px;
 }
 
 .brand-mark {
-  width: 52px;
-  height: 52px;
+  width: 58px;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f4d27a;
-  background: #1f1f1f;
-  border: 1px solid #4a3c1c;
-  border-radius: 8px;
-  font-size: 26px;
-  font-weight: 700;
+  color: #ffd88a;
+  background:
+    linear-gradient(145deg, #2c1b13, #8a4f21);
+  border: 1px solid #d9a64d;
+  border-radius: 12px;
+  font-size: 28px;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 12px 26px rgba(91, 53, 25, 0.24);
 }
 
 .card-header h1 {
-  font-size: 26px;
-  color: #171717;
+  font-size: 34px;
+  color: #211814;
   margin-bottom: 6px;
   letter-spacing: 0;
+  font-weight: 900;
 }
 
 .card-header p {
-  color: #626262;
-  font-size: 13px;
+  color: #716255;
+  font-size: 15px;
+  line-height: 1.65;
 }
 
 .bazi-form { margin-top: 8px; }
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
+}
+
+.bazi-form :deep(.el-form-item__label) {
+  color: #4d4034;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.bazi-form :deep(.el-input__wrapper),
+.bazi-form :deep(.el-select__wrapper),
+.bazi-form :deep(.el-date-editor.el-input__wrapper) {
+  min-height: 42px;
+  border-radius: 10px;
 }
 
 .full-control { width: 100%; }
@@ -311,10 +328,17 @@ function formatDate(timestamp) {
 
 .submit-button {
   width: 100%;
-  height: 44px;
-  background: #8b6914;
-  border-color: #8b6914;
-  font-weight: 700;
+  height: 48px;
+  background: #8d4e22;
+  border-color: #8d4e22;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.submit-button:hover {
+  background: #a96127;
+  border-color: #a96127;
 }
 
 .quick-examples {
@@ -325,16 +349,17 @@ function formatDate(timestamp) {
 }
 
 .quick-examples button {
-  border: 1px solid #d7c493;
-  background: #fffaf0;
-  color: #6f5310;
+  border: 1px solid #d9b879;
+  background: #fff8e9;
+  color: #7c4a18;
   border-radius: 999px;
-  padding: 7px 11px;
+  padding: 8px 13px;
   cursor: pointer;
+  font-size: 14px;
 }
 
 .history-panel {
-  padding: 22px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   min-height: 420px;
@@ -349,14 +374,14 @@ function formatDate(timestamp) {
 }
 
 .history-title {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 700;
-  color: #1f1f1f;
+  color: #2a1c15;
 }
 
 .history-subtitle {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: #7a7468;
 }
 
@@ -370,9 +395,9 @@ function formatDate(timestamp) {
   position: relative;
   width: 100%;
   border: 1px solid #eee4cf;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fffdf8;
-  padding: 11px 38px 11px 12px;
+  padding: 13px 40px 13px 14px;
   text-align: left;
   cursor: pointer;
 }
@@ -388,13 +413,13 @@ function formatDate(timestamp) {
 }
 
 .history-main strong {
-  color: #242424;
-  font-size: 14px;
+  color: #2a1c15;
+  font-size: 15px;
 }
 
 .history-main em {
   color: #716b60;
-  font-size: 12px;
+  font-size: 13px;
   font-style: normal;
   line-height: 1.5;
 }
@@ -403,7 +428,7 @@ function formatDate(timestamp) {
   display: block;
   margin-top: 8px;
   color: #9a907d;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .delete-history {
@@ -430,7 +455,7 @@ function formatDate(timestamp) {
   place-items: center;
   color: #83796b;
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .empty-line {
@@ -444,7 +469,7 @@ function formatDate(timestamp) {
 @media (max-width: 920px) {
   .input-page {
     align-items: flex-start;
-    padding: 14px;
+    padding: 16px;
   }
 
   .input-shell {

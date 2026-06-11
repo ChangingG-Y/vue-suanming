@@ -17,7 +17,7 @@
       <div class="ai-panel">
         <header class="ai-header">
           <div>
-            <div class="ai-title">AI 助手</div>
+            <div class="ai-title">胡桃大师</div>
             <div class="ai-subtitle">{{ loggedIn ? '已自动带入当前命盘' : '登录后可使用命盘问答' }}</div>
           </div>
           <button class="icon-button" type="button" @click="drawerVisible = false" aria-label="关闭">
@@ -111,14 +111,10 @@
               </div>
             </div>
 
-            <article
-              v-for="(message, index) in messages"
-              :key="index"
-              class="chat-message"
-              :class="message.role"
-            >
+            <article v-for="(message, index) in messages" :key="index" class="chat-message" :class="message.role">
               <div class="message-role">{{ message.role === 'user' ? '我' : 'AI' }}</div>
-              <div class="message-content">{{ message.content }}</div>
+              <div v-if="message.role === 'user'" class="message-content">{{ message.content }}</div>
+              <div v-else class="message-content markdown-body" v-html="renderMarkdown(message.content)"></div>
             </article>
 
             <article v-if="chatLoading" class="chat-message assistant">
@@ -160,6 +156,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound, Close, Lock, Promotion } from '@element-plus/icons-vue'
+import MarkdownIt from 'markdown-it'
 import { buildBaziPayload } from '../../utils/baziPayload.js'
 import { checkAiSession, clearAiToken, getAiToken, loginAi, sendAiChat } from '../../api/ai.js'
 
@@ -197,6 +194,12 @@ const reasoningOptions = [
   { label: 'Max', value: 'max' }
 ]
 
+const markdown = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true
+})
+
 const ROLE_STORAGE_KEY = 'suanming_ai_roles'
 const DEFAULT_ROLE_PROMPT = `你是一个专业、克制、结构清晰的八字命理分析助手。
 用户已经在前端完成排盘，后端会把完整八字上下文随问题一起给你。你不要要求用户重复输入出生年月日时。
@@ -220,7 +223,7 @@ const quickPrompts = [
   '感情婚姻有什么需要注意'
 ]
 
-const drawerSize = computed(() => (viewportWidth.value <= 640 ? '100%' : '440px'))
+const drawerSize = computed(() => (viewportWidth.value <= 640 ? '100%' : '560px'))
 const currentRole = computed(() => roles.value.find(role => role.id === currentRoleId.value) || roles.value[0])
 
 onMounted(() => {
@@ -273,6 +276,10 @@ async function handleLogin() {
 
 function usePrompt(text) {
   question.value = text
+}
+
+function renderMarkdown(content) {
+  return markdown.render(content || '')
 }
 
 async function handleSend() {
@@ -433,43 +440,45 @@ async function scrollToBottom() {
   right: 22px;
   bottom: 22px;
   z-index: 20;
-  width: 52px;
-  height: 52px;
+  width: 58px;
+  height: 58px;
   border: 0;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: #202124;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(145deg, #28231a, #9b6b24);
+  box-shadow: 0 18px 42px rgba(57, 40, 17, 0.32);
   cursor: pointer;
   transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .ai-fab:hover { transform: translateY(-2px); }
-.ai-fab.authed { background: #8b6914; }
+.ai-fab.authed { background: linear-gradient(145deg, #58351f, #c17c2e); }
 .ai-fab .el-icon { font-size: 24px; }
 
 .ai-panel {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f7f4ec;
+  background: #f5efe4;
 }
 
 .ai-header {
-  height: 68px;
-  padding: 14px 16px;
-  background: #1f1f1f;
+  height: 76px;
+  padding: 16px 18px;
+  background:
+    linear-gradient(135deg, rgba(42, 31, 23, 0.96), rgba(23, 22, 20, 0.98)),
+    #1f1f1f;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.ai-title { font-size: 17px; font-weight: 700; color: #d4ae46; }
-.ai-subtitle { font-size: 12px; color: #cfcfcf; margin-top: 4px; }
+.ai-title { font-size: 19px; font-weight: 800; color: #f1c86b; }
+.ai-subtitle { font-size: 13px; color: #ddcec0; margin-top: 5px; }
 
 .icon-button {
   width: 34px;
@@ -481,13 +490,13 @@ async function scrollToBottom() {
   cursor: pointer;
 }
 
-.login-box { padding: 18px; }
+.login-box { padding: 22px; }
 .full-button { width: 100%; }
 
 .ai-options {
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid #e5dcc8;
-  background: #fffdf7;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #e9dcc6;
+  background: #fffaf1;
 }
 
 .ai-options :deep(.el-form-item) {
@@ -507,7 +516,7 @@ async function scrollToBottom() {
 }
 
 .option-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #606266;
   line-height: 1;
 }
@@ -546,18 +555,18 @@ async function scrollToBottom() {
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 18px;
 }
 
 .empty-state {
   padding: 18px;
   border: 1px solid #e2d6ba;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fffaf0;
 }
 
-.empty-title { font-weight: 700; color: #2b2b2b; }
-.empty-text { margin-top: 6px; font-size: 13px; line-height: 1.6; color: #6f6655; }
+.empty-title { font-size: 17px; font-weight: 800; color: #2b2b2b; }
+.empty-text { margin-top: 7px; font-size: 14px; line-height: 1.7; color: #6f6655; }
 
 .quick-prompts {
   margin-top: 12px;
@@ -571,28 +580,29 @@ async function scrollToBottom() {
   background: #fff;
   color: #6f5310;
   border-radius: 999px;
-  padding: 7px 10px;
+  padding: 8px 12px;
   cursor: pointer;
+  font-size: 13px;
 }
 
 .chat-message {
   margin-bottom: 14px;
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .chat-message.user { flex-direction: row-reverse; }
 
 .message-role {
-  flex: 0 0 30px;
-  height: 30px;
+  flex: 0 0 34px;
+  height: 34px;
   border-radius: 50%;
   background: #1f1f1f;
   color: #d4ae46;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -602,16 +612,17 @@ async function scrollToBottom() {
 }
 
 .message-content {
-  max-width: calc(100% - 48px);
+  max-width: calc(100% - 54px);
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.7;
-  font-size: 14px;
+  line-height: 1.75;
+  font-size: 15px;
   color: #2b2b2b;
   background: #fff;
   border: 1px solid #eee3ca;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 8px 20px rgba(52, 38, 18, 0.06);
 }
 
 .chat-message.user .message-content {
@@ -622,8 +633,78 @@ async function scrollToBottom() {
 
 .loading-text { color: #80642a; }
 
-.chat-input {
+.markdown-body {
+  white-space: normal;
+}
+
+.markdown-body :deep(p) {
+  margin: 0 0 10px;
+}
+
+.markdown-body :deep(p:last-child),
+.markdown-body :deep(ul:last-child),
+.markdown-body :deep(ol:last-child),
+.markdown-body :deep(pre:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3) {
+  margin: 12px 0 8px;
+  color: #3a2818;
+  line-height: 1.35;
+  font-size: 17px;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin: 8px 0 12px 20px;
+  padding: 0;
+}
+
+.markdown-body :deep(li) {
+  margin: 4px 0;
+}
+
+.markdown-body :deep(strong) {
+  color: #7c4a18;
+  font-weight: 800;
+}
+
+.markdown-body :deep(blockquote) {
+  margin: 10px 0;
+  padding: 8px 12px;
+  color: #6d5e4b;
+  background: #fff8e8;
+  border-left: 3px solid #c58a37;
+}
+
+.markdown-body :deep(code) {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: #f5ead9;
+  color: #7a3f18;
+  font-size: 0.92em;
+}
+
+.markdown-body :deep(pre) {
+  overflow-x: auto;
+  margin: 10px 0;
   padding: 12px;
+  border-radius: 10px;
+  background: #231f1a;
+  color: #f8ecd8;
+}
+
+.markdown-body :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.chat-input {
+  padding: 14px;
   border-top: 1px solid #e5dcc8;
   background: #fff;
 }

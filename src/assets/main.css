@@ -13,8 +13,11 @@ body,
 body {
   margin: 0;
   min-width: 320px;
-  color: #222;
-  background: #f4f1e8;
+  color: #241b16;
+  background: #f5efe4;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {
@@ -31,4 +34,12 @@ select {
 
 .el-drawer__body {
   padding: 0;
+}
+
+.el-button {
+  font-weight: 700;
+}
+
+.el-tabs__item {
+  font-size: 15px;
 }

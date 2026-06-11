@@ -21,6 +21,9 @@ function onSubmit({ data, form }) {
 
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f5f5; }
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  background: #f5efe4;
+}
 .app-root { min-height: 100vh; }
 </style>

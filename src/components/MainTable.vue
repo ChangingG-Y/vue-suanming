@@ -102,25 +102,26 @@ const cols = computed(() => props.data.tableColumns)
 .bazi-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 15px;
 }
 .bazi-table th, .bazi-table td {
   border: 1px solid #e8e0cc;
-  padding: 4px 6px;
+  padding: 7px 8px;
   text-align: center;
   vertical-align: top;
-  min-width: 60px;
+  min-width: 72px;
 }
 .bazi-table th {
   background: #f5f0e8;
-  color: #555;
-  font-weight: normal;
-  font-size: 12px;
+  color: #5a4c3b;
+  font-weight: 700;
+  font-size: 14px;
 }
 .row-label {
   background: #fafaf8;
-  color: #888;
-  font-size: 12px;
+  color: #8a7a66;
+  font-size: 14px;
+  font-weight: 700;
   white-space: nowrap;
   text-align: right;
   padding-right: 8px;
@@ -128,29 +129,29 @@ const cols = computed(() => props.data.tableColumns)
 }
 .day-col { background: #fffdf5; }
 .cell-gan, .cell-zhi {
-  font-size: 26px;
+  font-size: 32px;
   font-weight: bold;
-  padding: 6px 4px;
+  padding: 8px 4px;
 }
 .cell-center { vertical-align: middle; }
-.small-text { font-size: 12px; color: #555; }
+.small-text { font-size: 14px; color: #4d4438; }
 .cell-hidegan { vertical-align: top; padding: 4px; }
 .hide-gan-row {
   display: flex;
   justify-content: center;
   gap: 3px;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.65;
 }
-.hide-ss { font-size: 11px; }
+.hide-ss { font-size: 13px; }
 .cell-shensha { vertical-align: top; }
-.shensha-item { font-size: 11px; color: #666; white-space: nowrap; line-height: 1.7; }
+.shensha-item { font-size: 13px; color: #8d6830; white-space: nowrap; line-height: 1.75; }
 .bottom-info {
   display: flex;
   gap: 20px;
   padding: 8px 0;
-  font-size: 12px;
-  color: #888;
+  font-size: 13px;
+  color: #887865;
   justify-content: flex-end;
   flex-wrap: wrap;
 }
