@@ -354,4 +354,84 @@ const wuxingData = computed(() => {
   color: #7a6a58;
   flex-shrink: 0;
 }
+
+/* ── 深色模式 ── */
+:global(.bazi-view.dark) .qiyun-info {
+  background: rgba(30, 18, 6, 0.72);
+  border-color: rgba(140, 100, 40, 0.3);
+  color: #d0b880;
+}
+:global(.bazi-view.dark) .qiyun-info .label {
+  color: #c8a868;
+}
+:global(.bazi-view.dark) .dayun-table td,
+:global(.bazi-view.dark) .liunian-table td {
+  border-color: rgba(140, 100, 40, 0.28);
+}
+:global(.bazi-view.dark) .row-head {
+  background: rgba(40, 25, 8, 0.65);
+  color: #a08860;
+}
+:global(.bazi-view.dark) .cell-today {
+  background: rgba(90, 58, 12, 0.38);
+}
+:global(.bazi-view.dark) .cell-today.dayun-year {
+  color: #e8c060;
+}
+:global(.bazi-view.dark) .cell-selected {
+  background: rgba(150, 100, 20, 0.28) !important;
+  box-shadow: inset 0 0 0 1.5px rgba(190, 140, 40, 0.55);
+}
+:global(.bazi-view.dark) .cell-selected.dayun-year {
+  color: #f0d070;
+}
+:global(.bazi-view.dark) .cell-selected.cell-today {
+  background: rgba(170, 115, 28, 0.35) !important;
+}
+:global(.bazi-view.dark) .dayun-cell:hover {
+  background: rgba(100, 65, 15, 0.3);
+}
+:global(.bazi-view.dark) .section-title {
+  color: #d0b880;
+}
+:global(.bazi-view.dark) .dy-label {
+  color: #e8c060;
+}
+:global(.bazi-view.dark) .non-current-hint {
+  color: #c09060;
+  background: rgba(160, 100, 40, 0.15);
+  border-color: rgba(160, 100, 40, 0.3);
+}
+:global(.bazi-view.dark) .section-subtitle {
+  color: #8a7a68;
+}
+:global(.bazi-view.dark) .age-label {
+  color: #a08860;
+}
+:global(.bazi-view.dark) .ss-tag {
+  color: #806850;
+}
+:global(.bazi-view.dark) .active {
+  background: rgba(90, 58, 12, 0.48);
+}
+:global(.bazi-view.dark) .ln-year.active {
+  color: #e8c060;
+  background: rgba(90, 58, 12, 0.48);
+}
+:global(.bazi-view.dark) .wuxing-section {
+  background: rgba(22, 13, 4, 0.65);
+  border-color: rgba(140, 100, 40, 0.22);
+}
+:global(.bazi-view.dark) .wuxing-title {
+  color: #a08860;
+}
+:global(.bazi-view.dark) .wx-count {
+  color: #a09070;
+}
+:global(.bazi-view.dark) .wx-ext-label {
+  color: #c0a870;
+}
+:global(.bazi-view.dark) .wx-track {
+  background: rgba(255, 255, 255, 0.08);
+}
 </style>

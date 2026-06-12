@@ -30,6 +30,7 @@ function onBack() {
 body {
   font-family: 'Noto Serif SC', 'PingFang SC', 'STSong', 'Microsoft YaHei', serif;
   background: #f5efe4;
+  font-weight: 500;
 }
 .app-root { min-height: 100vh; }
 

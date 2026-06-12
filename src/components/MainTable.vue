@@ -356,4 +356,64 @@ function openDesc(event, name) {
 .ss-pop-leave-active { animation: ss-out 0.12s ease-in; }
 @keyframes ss-in  { from { opacity: 0; transform: scale(0.92) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes ss-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.94); } }
+
+/* ── 深色模式 ── */
+:global(.bazi-view.dark) .bazi-table th,
+:global(.bazi-view.dark) .bazi-table td {
+  border-color: rgba(140, 100, 40, 0.3);
+}
+:global(.bazi-view.dark) .bazi-table th {
+  background: rgba(50, 32, 10, 0.75);
+  color: #dcc890;
+}
+:global(.bazi-view.dark) .row-label {
+  background: rgba(38, 24, 8, 0.65);
+  color: #b09870;
+}
+:global(.bazi-view.dark) .bazi-table tbody tr:nth-child(1) td {
+  background: rgba(40, 25, 10, 0.3);
+}
+:global(.bazi-view.dark) .bazi-table tbody tr:nth-child(4) td {
+  background: rgba(55, 35, 12, 0.4);
+  border-top-color: rgba(160, 110, 40, 0.3);
+  border-bottom-color: rgba(160, 110, 40, 0.3);
+}
+:global(.bazi-view.dark) .bazi-table tbody tr:nth-child(5) td,
+:global(.bazi-view.dark) .bazi-table tbody tr:nth-child(6) td,
+:global(.bazi-view.dark) .bazi-table tbody tr:nth-child(7) td,
+:global(.bazi-view.dark) .bazi-table tbody tr:nth-child(8) td {
+  background: rgba(35, 22, 8, 0.3);
+}
+:global(.bazi-view.dark) .bazi-table tbody tr:nth-child(9) td {
+  background: rgba(45, 28, 10, 0.3);
+  border-top-color: rgba(160, 110, 40, 0.25);
+}
+:global(.bazi-view.dark) .day-col {
+  background: rgba(60, 40, 12, 0.4) !important;
+}
+:global(.bazi-view.dark) .bazi-table th.day-col {
+  background: rgba(80, 55, 15, 0.6) !important;
+}
+:global(.bazi-view.dark) .small-text {
+  color: #c8b090;
+}
+:global(.bazi-view.dark) .hide-gan-row {
+  color: #c8b090;
+}
+:global(.bazi-view.dark) .shensha-item {
+  color: #d4a860;
+}
+:global(.bazi-view.dark) .shensha-item:hover {
+  background: rgba(200, 150, 50, 0.2);
+  color: #f0c880;
+}
+:global(.bazi-view.dark) .bottom-info {
+  color: rgba(200, 175, 135, 0.9);
+  border-top-color: rgba(140, 100, 40, 0.25);
+}
+:global(.bazi-view.dark) .bottom-info span {
+  background: rgba(50, 32, 10, 0.55);
+  border-color: rgba(160, 120, 50, 0.3);
+  color: #c8aa78;
+}
 </style>
