@@ -4,32 +4,36 @@
     <van-tabbar v-model="active" active-color="#c96b7e" inactive-color="#aeaeb2">
       <van-tabbar-item @click="$router.push('/order/menu')">
         <template #icon>
-          <span class="tab-icon" :class="{ 'tab-active': active === 0 }">🍱</span>
+          <span class="tab-icon" :class="{ 'tab-active': active === 0 }">{{ cfg.tab0Icon }}</span>
         </template>
-        点饭饭
+        {{ cfg.tab0Label }}
       </van-tabbar-item>
       <van-tabbar-item @click="$router.push('/order/orders')">
         <template #icon>
-          <span class="tab-icon" :class="{ 'tab-active': active === 1 }">🍖</span>
+          <span class="tab-icon" :class="{ 'tab-active': active === 1 }">{{ cfg.tab1Icon }}</span>
         </template>
-        小碗里
+        {{ cfg.tab1Label }}
       </van-tabbar-item>
       <van-tabbar-item @click="$router.push('/order/history')">
         <template #icon>
-          <span class="tab-icon" :class="{ 'tab-active': active === 2 }">📖</span>
+          <span class="tab-icon" :class="{ 'tab-active': active === 2 }">{{ cfg.tab2Icon }}</span>
         </template>
-        干饭史
+        {{ cfg.tab2Label }}
       </van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useRoute, RouterView } from 'vue-router'
+import { useLayoutConfigStore } from '../../stores/layoutConfig.js'
+import { getLayoutConfig } from '../../api/orderConfig.js'
 import '../../assets/order.css'
 
 const route = useRoute()
+const layoutStore = useLayoutConfigStore()
+const cfg = computed(() => layoutStore.config)
 const active = ref(0)
 
 watch(() => route.path, p => {
@@ -37,6 +41,15 @@ watch(() => route.path, p => {
   else if (p.includes('/orders') && !p.includes('history')) active.value = 1
   else if (p.includes('/history')) active.value = 2
 }, { immediate: true })
+
+onMounted(async () => {
+  if (!layoutStore.loaded) {
+    try {
+      const data = await getLayoutConfig()
+      if (data) layoutStore.setConfig(data)
+    } catch {}
+  }
+})
 </script>
 
 <style scoped>

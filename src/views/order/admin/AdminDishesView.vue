@@ -19,33 +19,38 @@
             <div style="font-size:36px;">🍽️</div>
             <p style="margin-top:8px;font-size:13px;">暂无菜品</p>
           </div>
-          <div
-            v-else
-            v-for="dish in dishes"
-            :key="dish.id"
-            class="dish-item"
-          >
-            <!-- 图片 -->
-            <div style="width:60px;height:60px;border-radius:10px;background:#fef4f5;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;">
-              <img v-if="dish.imageFileId" :src="thumbUrl(dish.imageFileId)" style="width:60px;height:60px;object-fit:cover;" />
-              <span v-else>🍽️</span>
-            </div>
-            <!-- 信息 -->
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:700;font-size:14px;color:#1c1c1e;">{{ dish.name }}</div>
-              <div v-if="dish.description" style="font-size:12px;color:#aeaeb2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ dish.description }}</div>
-              <div style="color:#c96b7e;font-size:13px;font-weight:600;margin-top:3px;">{{ dish.price }}个😘</div>
-            </div>
-            <!-- 操作 -->
-            <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-              <van-switch
-                v-model="dish.available"
-                size="20px"
-                active-color="#c96b7e"
-                @change="toggleAvailable(dish)"
-              />
-              <button class="btn-edit" @click="openEdit(dish)">编辑</button>
-              <button class="btn-delete" @click="confirmDelete(dish)">删除</button>
+          <div v-else>
+            <div
+              v-for="(dish, idx) in dishes"
+              :key="dish.id"
+              class="dish-item"
+            >
+              <!-- 图片 -->
+              <div style="width:60px;height:60px;border-radius:10px;background:#fef4f5;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;">
+                <img v-if="dish.imageFileId" :src="thumbUrl(dish.imageFileId)" style="width:60px;height:60px;object-fit:cover;" />
+                <span v-else>🍽️</span>
+              </div>
+              <!-- 信息 -->
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:14px;color:#1c1c1e;">{{ dish.name }}</div>
+                <div v-if="dish.description" style="font-size:12px;color:#aeaeb2;margin-top:2px;word-break:break-all;white-space:normal;">{{ dish.description }}</div>
+                <div style="color:#c96b7e;font-size:13px;font-weight:600;margin-top:3px;">{{ dish.price }}个😘</div>
+              </div>
+              <!-- 操作 -->
+              <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;align-items:center;">
+                <van-switch
+                  :model-value="dish.state === 1"
+                  size="20px"
+                  active-color="#c96b7e"
+                  @change="(val) => toggleAvailable(dish, val)"
+                />
+                <div style="display:flex;gap:3px;">
+                  <button class="sort-btn" :disabled="idx === 0" @click="moveUp(idx)">↑</button>
+                  <button class="sort-btn" :disabled="idx === dishes.length - 1" @click="moveDown(idx)">↓</button>
+                </div>
+                <button class="btn-edit" @click="openEdit(dish)">编辑</button>
+                <button class="btn-delete" @click="confirmDelete(dish)">删除</button>
+              </div>
             </div>
           </div>
         </div>
@@ -88,7 +93,7 @@
 
         <!-- 图片上传 -->
         <div class="form-group">
-          <label>菜品图片</label>
+          <label>菜品图片（1:1 裁剪，仅存缩略图）</label>
           <div style="display:flex;gap:10px;margin-top:6px;">
             <div v-if="form.imagePreview" style="position:relative;">
               <img :src="form.imagePreview" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:1px solid #e5e5ea;" />
@@ -191,12 +196,44 @@ async function onTabChange(idx) {
   }
 }
 
-async function toggleAvailable(dish) {
+async function toggleAvailable(dish, val) {
+  const newState = val ? 1 : 0
+  const prev = dish.state
+  dish.state = newState
   try {
-    await updateDish(dish.id, { ...dish, available: dish.available })
-    showToast({ message: dish.available ? '已上架' : '已下架', type: 'success' })
+    await updateDish(dish.id, { state: newState })
+    showToast({ message: newState === 1 ? '已上架' : '已下架', type: 'success' })
   } catch (e) {
-    dish.available = !dish.available
+    dish.state = prev
+    showToast({ message: e.message, type: 'fail' })
+  }
+}
+
+async function moveUp(idx) {
+  if (idx === 0) return
+  await swapSeq(idx, idx - 1)
+}
+
+async function moveDown(idx) {
+  if (idx === dishes.value.length - 1) return
+  await swapSeq(idx, idx + 1)
+}
+
+async function swapSeq(i, j) {
+  const a = dishes.value[i]
+  const b = dishes.value[j]
+  const seqA = a.seq ?? (i + 1)
+  const seqB = b.seq ?? (j + 1)
+  try {
+    await Promise.all([
+      updateDish(a.id, { seq: seqB }),
+      updateDish(b.id, { seq: seqA }),
+    ])
+    a.seq = seqB
+    b.seq = seqA
+    dishes.value.splice(i, 1)
+    dishes.value.splice(j, 0, a)
+  } catch (e) {
     showToast({ message: e.message, type: 'fail' })
   }
 }
@@ -251,8 +288,8 @@ function onFileSelected(e) {
 async function onCropConfirm(blob) {
   showCropper.value = false
   try {
-    const result = await uploadFile(new File([blob], 'dish.jpg', { type: 'image/jpeg' }))
-    form.value.imageFileId = result.id  // 后端返回 FileRespDto，取 id 字段
+    const result = await uploadFile(new File([blob], 'dish.jpg', { type: 'image/jpeg' }), 'dish')
+    form.value.imageFileId = result.id
     form.value.imagePreview = URL.createObjectURL(blob)
     showToast({ message: '图片上传成功', type: 'success' })
   } catch (e) {
@@ -326,6 +363,25 @@ async function doDelete() {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
+.sort-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #e5e5ea;
+  background: #f7f7f9;
+  color: #6d6d72;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.sort-btn:not(:disabled):hover { background: #fef4f5; color: #c96b7e; border-color: #c96b7e; }
+.sort-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
 .btn-primary {
   background: #c96b7e;
   color: #fff;
@@ -336,11 +392,7 @@ async function doDelete() {
   letter-spacing: 0.3px;
   cursor: pointer;
 }
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-cancel {
   background: #ffffff;
@@ -356,7 +408,7 @@ async function doDelete() {
   color: #c96b7e;
   border: 1px solid #fef4f5;
   border-radius: 8px;
-  padding: 5px 10px;
+  padding: 4px 10px;
   font-size: 12px;
   cursor: pointer;
 }
@@ -366,15 +418,12 @@ async function doDelete() {
   color: #aeaeb2;
   border: 1px solid #e5e5ea;
   border-radius: 8px;
-  padding: 5px 10px;
+  padding: 4px 10px;
   font-size: 12px;
   cursor: pointer;
 }
 
-.form-group {
-  margin-bottom: 14px;
-}
-
+.form-group { margin-bottom: 14px; }
 .form-group label {
   display: block;
   font-size: 13px;
@@ -382,7 +431,6 @@ async function doDelete() {
   font-weight: 600;
   margin-bottom: 6px;
 }
-
 .form-group input {
   width: 100%;
   padding: 10px 12px;
@@ -391,12 +439,8 @@ async function doDelete() {
   font-size: 14px;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.2s;
   color: #1c1c1e;
   background: #ffffff;
 }
-
-.form-group input:focus {
-  border-color: #c96b7e;
-}
+.form-group input:focus { border-color: #c96b7e; }
 </style>

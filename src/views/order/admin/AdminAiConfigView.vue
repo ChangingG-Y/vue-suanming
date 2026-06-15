@@ -63,6 +63,34 @@
         </div>
       </div>
 
+      <!-- API Keys -->
+      <div class="config-card">
+        <div class="config-label">API Keys</div>
+        <div style="margin-top:10px;">
+          <div style="font-size:12px;color:#6d6d72;font-weight:600;margin-bottom:5px;">豆包 / 火山引擎</div>
+          <input
+            v-model="form.doubaoApiKey"
+            type="password"
+            placeholder="留空则使用服务器配置文件"
+            class="config-input"
+            autocomplete="new-password"
+          />
+        </div>
+        <div style="margin-top:12px;">
+          <div style="font-size:12px;color:#6d6d72;font-weight:600;margin-bottom:5px;">DeepSeek</div>
+          <input
+            v-model="form.deepseekApiKey"
+            type="password"
+            placeholder="留空则使用服务器配置文件"
+            class="config-input"
+            autocomplete="new-password"
+          />
+        </div>
+        <div style="font-size:11px;color:#aeaeb2;margin-top:8px;">
+          数据库中的Key优先级高于服务器配置文件，每个租户可独立配置
+        </div>
+      </div>
+
       <!-- 保存 -->
       <button
         class="btn-save"
@@ -124,7 +152,9 @@ const form = ref({
   enabled: '1',
   provider: 'doubao',
   model: 'doubao-seed-2-0-lite-260428',
-  prompt: ''
+  prompt: '',
+  doubaoApiKey: '',
+  deepseekApiKey: ''
 })
 
 const currentModelOptions = computed(() => MODEL_OPTIONS[form.value.provider] || [])
@@ -154,6 +184,8 @@ onMounted(async () => {
       form.value.provider = config.provider ?? 'doubao'
       form.value.model = config.model ?? 'doubao-seed-2-0-lite-260428'
       form.value.prompt = config.prompt ?? ''
+      form.value.doubaoApiKey = config.doubaoApiKey ?? ''
+      form.value.deepseekApiKey = config.deepseekApiKey ?? ''
     }
   } catch (e) {
     showToast({ message: '加载配置失败：' + e.message, type: 'fail' })

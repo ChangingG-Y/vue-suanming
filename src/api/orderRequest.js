@@ -23,6 +23,7 @@ orderRequest.interceptors.response.use(
         localStorage.removeItem('order_token')
         localStorage.removeItem('order_role')
         localStorage.removeItem('order_nickname')
+        localStorage.removeItem('order_tenant_id')
         window.location.href = '/suanming/order/login'
       }
       return Promise.reject(new Error(data.msg || '请求失败'))

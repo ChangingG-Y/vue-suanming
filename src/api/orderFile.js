@@ -1,8 +1,9 @@
 import req from './orderRequest.js'
 
-export const uploadFile = (file) => {
+export const uploadFile = (file, mode = 'review') => {
   const form = new FormData()
   form.append('file', file)
+  form.append('mode', mode)
   return req.post('/order/file/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
 }
 

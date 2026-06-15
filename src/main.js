@@ -9,7 +9,6 @@ import Vant from 'vant'
 import 'vant/lib/index.css'
 import App from './App.vue'
 
-// 路由配置
 const router = createRouter({
   history: createWebHistory('/suanming/'),
   routes: [
@@ -37,18 +36,23 @@ const router = createRouter({
         { path: 'dishes', component: () => import('./views/order/admin/AdminDishesView.vue') },
         { path: 'categories', component: () => import('./views/order/admin/AdminCategoriesView.vue') },
         { path: 'ai-config', component: () => import('./views/order/admin/AdminAiConfigView.vue') },
+        { path: 'layout-config', component: () => import('./views/order/admin/LayoutConfigView.vue') },
+        { path: 'super', component: () => import('./views/order/admin/SuperAdminView.vue'), meta: { requiresSuperAdmin: true } },
       ]
     },
   ]
 })
 
-// 路由守卫
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('order_token')
-  const role = parseInt(localStorage.getItem('order_role') || '0')
-  if (to.meta.requiresAdmin) {
+  const role = parseInt(localStorage.getItem('order_role') ?? '2')
+  if (to.meta.requiresSuperAdmin) {
     if (!token) return next('/order/login')
-    if (role !== 1) return next('/order/menu')
+    if (role !== 0) return next('/order/admin/orders')
+  } else if (to.meta.requiresAdmin) {
+    if (!token) return next('/order/login')
+    // role 0 = super admin, role 1 = tenant admin; both can access admin
+    if (role > 1) return next('/order/menu')
   } else if (to.meta.requiresOrderAuth) {
     if (!token) return next('/order/login')
   }

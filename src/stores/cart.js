@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export const useCartStore = defineStore('cart', () => {
-  const items = ref([]) // [{ dishId, dishName, price, quantity }]
+  const items = ref([]) // [{ dishId, dishName, price, quantity, imageFileId }]
 
   const totalCount = computed(() => items.value.reduce((s, i) => s + i.quantity, 0))
   const totalKiss = computed(() => items.value.reduce((s, i) => s + i.price * i.quantity, 0))
@@ -12,7 +12,13 @@ export const useCartStore = defineStore('cart', () => {
     if (exist) {
       exist.quantity++
     } else {
-      items.value.push({ dishId: dish.id, dishName: dish.name, price: dish.price || 1, quantity: 1 })
+      items.value.push({
+        dishId: dish.id,
+        dishName: dish.name,
+        price: dish.price || 1,
+        quantity: 1,
+        imageFileId: dish.imageFileId || null,
+      })
     }
   }
 
@@ -31,5 +37,20 @@ export const useCartStore = defineStore('cart', () => {
     items.value = []
   }
 
-  return { items, totalCount, totalKiss, addDish, removeDish, getQuantity, clear }
+  // 从订单 items 恢复购物车（撤单时使用）
+  function restoreFromOrderItems(orderItems) {
+    clear()
+    if (!orderItems) return
+    for (const item of orderItems) {
+      items.value.push({
+        dishId: item.dishId,
+        dishName: item.dishName,
+        price: item.itemPrice || 0,
+        quantity: item.quantity,
+        imageFileId: item.imageFileId || null,
+      })
+    }
+  }
+
+  return { items, totalCount, totalKiss, addDish, removeDish, getQuantity, clear, restoreFromOrderItems }
 })

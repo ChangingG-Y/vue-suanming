@@ -1,7 +1,7 @@
 <template>
   <div class="admin-app">
     <div class="admin-header">
-      <span>🍱 小新补给站 管理</span>
+      <span>🍱 {{ adminTitle }}</span>
       <div style="display:flex;align-items:center;gap:12px;">
         <span class="admin-nick">{{ nickname }}</span>
         <span class="logout-btn" title="退出登录" @click="doLogout">⏏︎</span>
@@ -13,39 +13,56 @@
       <van-tabbar-item icon="column" @click="$router.push('/order/admin/dishes')">菜品管理</van-tabbar-item>
       <van-tabbar-item icon="apps-o" @click="$router.push('/order/admin/categories')">分类管理</van-tabbar-item>
       <van-tabbar-item icon="setting-o" @click="$router.push('/order/admin/ai-config')">AI配置</van-tabbar-item>
+      <van-tabbar-item icon="edit" @click="$router.push('/order/admin/layout-config')">布局编辑</van-tabbar-item>
+      <van-tabbar-item v-if="isSuperAdmin" icon="manager-o" @click="$router.push('/order/admin/super')">超管</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useOrderAuthStore } from '../../../stores/orderAuth.js'
+import { useLayoutConfigStore } from '../../../stores/layoutConfig.js'
+import { getLayoutConfig } from '../../../api/orderConfig.js'
 
 const authStore = useOrderAuthStore()
+const layoutStore = useLayoutConfigStore()
 const nickname = authStore.nickname
+const isSuperAdmin = computed(() => authStore.isSuperAdmin())
+const adminTitle = computed(() => layoutStore.config.adminTitle)
+
 const route = useRoute()
 const router = useRouter()
 const active = ref(0)
 
 function doLogout() {
   authStore.clearAuth()
+  layoutStore.reset()
   router.push('/order/login')
 }
 
 watch(() => route.path, p => {
-  if (p.includes('/ai-config')) active.value = 3
+  if (p.includes('/super')) active.value = 5
+  else if (p.includes('/layout-config')) active.value = 4
+  else if (p.includes('/ai-config')) active.value = 3
   else if (p.includes('/categories')) active.value = 2
   else if (p.includes('/dishes')) active.value = 1
   else active.value = 0
 }, { immediate: true })
+
+onMounted(async () => {
+  if (!layoutStore.loaded) {
+    try {
+      const data = await getLayoutConfig()
+      if (data) layoutStore.setConfig(data)
+    } catch {}
+  }
+})
 </script>
 
 <style scoped>
-.admin-app {
-  background: #f2f2f7;
-  min-height: 100vh;
-}
+.admin-app { background: #f2f2f7; min-height: 100vh; }
 
 .admin-header {
   background: rgba(255, 255, 255, 0.88);
@@ -64,10 +81,7 @@ watch(() => route.path, p => {
   z-index: 10;
 }
 
-.admin-nick {
-  font-size: 13px;
-  color: #6d6d72;
-}
+.admin-nick { font-size: 13px; color: #6d6d72; }
 
 .logout-btn {
   font-size: 18px;
@@ -77,8 +91,5 @@ watch(() => route.path, p => {
   transition: color 0.15s;
   user-select: none;
 }
-
-.logout-btn:hover {
-  color: #c96b7e;
-}
+.logout-btn:hover { color: #c96b7e; }
 </style>

@@ -45,12 +45,26 @@
           </div>
         </div>
 
-        <!-- 总计 -->
+        <!-- 评价内容摘要（已完成且有评价时显示） -->
+        <div v-if="order.state === 3 && order.hasReview && order.reviewContent" style="background:#fef4f5;border-radius:8px;padding:7px 10px;margin-bottom:10px;font-size:12px;color:#6d6d72;line-height:1.5;">
+          "{{ order.reviewContent }}"
+        </div>
+
+        <!-- 总计 + 操作按钮 -->
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:13px;color:#6d6d72;">共 {{ order.totalKiss || totalKissFromItems(order.items) }}个😘</span>
 
           <!-- 操作按钮 -->
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <!-- state==0：待接单，可撤单 -->
+            <button
+              v-if="order.state === 0"
+              class="btn-cancel-order"
+              @click.stop="openCancelConfirm(order)"
+            >
+              撤单
+            </button>
+
             <!-- state==2：饭好了，显示支付按钮 -->
             <button
               v-if="order.state === 2"
@@ -58,7 +72,7 @@
               style="padding:7px 14px;font-size:13px;"
               @click.stop="openPayConfirm(order)"
             >
-              饭好了！支付😘 🍽️
+              饭好了！支付😘
             </button>
 
             <!-- state==3 且无评价：写评价 -->
@@ -96,18 +110,35 @@
         <p style="font-size:13px;color:#6d6d72;margin-top:8px;">（就是真的😘哦）</p>
       </div>
     </van-dialog>
+
+    <!-- 撤单确认弹窗 -->
+    <van-dialog
+      v-model:show="showCancelConfirm"
+      title="撤单"
+      message="撤单后菜品会恢复到购物车，可以重新修改后下单"
+      show-cancel-button
+      confirm-button-text="确认撤单"
+      confirm-button-color="#ff3b30"
+      @confirm="doCancel"
+      @cancel="showCancelConfirm = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getMyOrders, completeOrder } from '../../api/orderApi.js'
+import { useRouter } from 'vue-router'
+import { getMyOrders, completeOrder, cancelOrder } from '../../api/orderApi.js'
+import { useCartStore } from '../../stores/cart.js'
 import { MEAL_NAMES, MEAL_EMOJIS, STATE_NAMES } from '../../utils/mealType.js'
 import { showToast } from 'vant'
 
+const router = useRouter()
+const cart = useCartStore()
 const orders = ref([])
 const loading = ref(true)
 const showPayConfirm = ref(false)
+const showCancelConfirm = ref(false)
 const currentOrder = ref(null)
 let timer = null
 
@@ -148,6 +179,26 @@ async function loadOrders() {
 function openPayConfirm(order) {
   currentOrder.value = order
   showPayConfirm.value = true
+}
+
+function openCancelConfirm(order) {
+  currentOrder.value = order
+  showCancelConfirm.value = true
+}
+
+async function doCancel() {
+  if (!currentOrder.value) return
+  try {
+    await cancelOrder(currentOrder.value.id)
+    // 恢复购物车
+    cart.restoreFromOrderItems(currentOrder.value.items)
+    showToast({ message: '已撤单，菜品已还原到购物车', type: 'success' })
+    await loadOrders()
+    router.push('/order/menu')
+  } catch (e) {
+    showToast({ message: e.message, type: 'fail' })
+  }
+  showCancelConfirm.value = false
 }
 
 async function doComplete() {
@@ -281,4 +332,17 @@ onUnmounted(() => {
 }
 .btn-outline:hover { background: #fef4f5; }
 .btn-outline:active { transform: scale(0.93); }
+
+.btn-cancel-order {
+  background: transparent;
+  color: #aeaeb2;
+  border: 1px solid #e5e5ea;
+  border-radius: 22px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-cancel-order:hover { color: #ff3b30; border-color: #ff3b30; }
 </style>

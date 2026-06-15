@@ -1,13 +1,29 @@
 <template>
   <div class="login-page">
-    <!-- 装饰光晕 -->
     <div class="glow glow-1"></div>
     <div class="glow glow-2"></div>
 
     <div class="login-hero">
-      <div class="hero-emoji">🍱</div>
-      <h1 class="hero-title">小新补给站🍱(๑´ڡ`๑)</h1>
-      <p class="hero-sub">今天想吃点什么呀~</p>
+      <div class="hero-emoji">{{ layout.loginEmoji }}</div>
+      <h1 class="hero-title">{{ layout.loginTitle }}</h1>
+      <p class="hero-sub">{{ layout.loginSub }}</p>
+    </div>
+
+    <!-- 历史登录快选 -->
+    <div v-if="historyList.length > 0" class="history-section">
+      <div class="history-label">最近登录</div>
+      <div class="history-chips">
+        <div
+          v-for="h in historyList"
+          :key="h.username"
+          class="history-chip"
+          @click="fillHistory(h)"
+        >
+          <span class="chip-nick">{{ h.nickname || h.username }}</span>
+          <span class="chip-user">{{ h.username }}</span>
+          <span class="chip-del" @click.stop="removeHistory(h.username)">×</span>
+        </div>
+      </div>
     </div>
 
     <div class="login-card">
@@ -27,7 +43,7 @@
       <button class="login-btn" :class="{ loading }" :disabled="loading" @click="doLogin">
         <span class="btn-content">
           <span v-if="loading" class="spinner"></span>
-          {{ loading ? '登录中…' : '进入小新补给站' }}
+          {{ loading ? '登录中…' : layout.loginBtn }}
         </span>
       </button>
     </div>
@@ -35,16 +51,51 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../../api/orderAuth.js'
+import { getLayoutConfig } from '../../api/orderConfig.js'
 import { useOrderAuthStore } from '../../stores/orderAuth.js'
+import { useLayoutConfigStore } from '../../stores/layoutConfig.js'
 
 const router = useRouter()
 const authStore = useOrderAuthStore()
+const layoutStore = useLayoutConfigStore()
+const layout = computed(() => layoutStore.config)
+
 const form = ref({ username: '', password: '' })
 const error = ref('')
 const loading = ref(false)
+
+const HISTORY_KEY = 'order_login_history'
+const historyList = ref([])
+
+function loadHistory() {
+  try {
+    historyList.value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+  } catch {
+    historyList.value = []
+  }
+}
+
+function saveHistory(resp, password) {
+  const h = { username: form.value.username, password, nickname: resp.nickname || '' }
+  let list = historyList.value.filter(x => x.username !== h.username)
+  list.unshift(h)
+  if (list.length > 5) list = list.slice(0, 5)
+  historyList.value = list
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
+}
+
+function fillHistory(h) {
+  form.value.username = h.username
+  form.value.password = h.password
+}
+
+function removeHistory(username) {
+  historyList.value = historyList.value.filter(x => x.username !== username)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(historyList.value))
+}
 
 async function doLogin() {
   if (!form.value.username || !form.value.password) {
@@ -55,8 +106,14 @@ async function doLogin() {
   loading.value = true
   try {
     const resp = await login(form.value.username, form.value.password)
+    saveHistory(resp, form.value.password)
     authStore.setAuth(resp)
-    if (resp.role === 1) router.push('/order/admin/orders')
+    // Load layout config after login
+    try {
+      const cfg = await getLayoutConfig()
+      if (cfg) layoutStore.setConfig(cfg)
+    } catch {}
+    if (resp.role <= 1) router.push('/order/admin/orders')
     else router.push('/order/menu')
   } catch (e) {
     error.value = e.message
@@ -64,10 +121,13 @@ async function doLogin() {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  loadHistory()
+})
 </script>
 
 <style scoped>
-/* ── 页面背景 ── */
 .login-page {
   min-height: 100vh;
   background: #f2f2f7;
@@ -80,7 +140,6 @@ async function doLogin() {
   overflow: hidden;
 }
 
-/* ── 动态光晕 ── */
 .glow {
   position: absolute;
   border-radius: 50%;
@@ -105,17 +164,15 @@ async function doLogin() {
   to   { transform: translate(16px, 20px) scale(1.08); }
 }
 
-/* ── Hero ── */
 .login-hero {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   animation: heroIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
 }
 @keyframes heroIn {
   from { opacity: 0; transform: translateY(-20px) scale(0.92); }
   to   { opacity: 1; transform: none; }
 }
-
 .hero-emoji {
   font-size: 68px;
   margin-bottom: 10px;
@@ -127,7 +184,6 @@ async function doLogin() {
   0%,100% { transform: rotate(-4deg) scale(1); }
   50%      { transform: rotate(4deg) scale(1.06); }
 }
-
 .hero-title {
   font-size: 22px;
   font-weight: 800;
@@ -142,7 +198,48 @@ async function doLogin() {
   margin-top: 4px;
 }
 
-/* ── 卡片 ── */
+/* 历史登录 */
+.history-section {
+  width: 100%;
+  max-width: 360px;
+  margin-bottom: 12px;
+}
+.history-label {
+  font-size: 11px;
+  color: #aeaeb2;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.history-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.history-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(229,229,234,0.8);
+  border-radius: 20px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.history-chip:hover { border-color: #c96b7e; background: #fef4f5; }
+.chip-nick { font-size: 13px; font-weight: 600; color: #1c1c1e; }
+.chip-user { font-size: 11px; color: #aeaeb2; }
+.chip-del {
+  font-size: 14px;
+  color: #aeaeb2;
+  line-height: 1;
+  margin-left: 2px;
+  transition: color 0.15s;
+}
+.chip-del:hover { color: #ff3b30; }
+
 .login-card {
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(24px);
@@ -162,7 +259,6 @@ async function doLogin() {
   to   { opacity: 1; transform: none; }
 }
 
-/* ── 输入框 ── */
 .input-group { margin-bottom: 16px; }
 .input-group label {
   display: block;
@@ -194,7 +290,6 @@ async function doLogin() {
   background: transparent;
 }
 
-/* ── 错误提示 ── */
 .error-tip {
   color: #e53935;
   font-size: 12px;
@@ -208,7 +303,6 @@ async function doLogin() {
   40%,60%  { transform: translateX(4px); }
 }
 
-/* ── 登录按钮 ── */
 .login-btn {
   width: 100%;
   padding: 14px;
@@ -238,10 +332,7 @@ async function doLogin() {
   box-shadow: 0 2px 8px rgba(201,107,126,0.2);
 }
 .login-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
 .btn-content { display: flex; align-items: center; justify-content: center; gap: 8px; }
-
-/* loading spinner */
 .spinner {
   width: 16px; height: 16px;
   border: 2px solid rgba(255,255,255,0.4);

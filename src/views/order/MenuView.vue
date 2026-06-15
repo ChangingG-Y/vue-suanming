@@ -89,7 +89,7 @@
             </div>
             <div style="flex:1;min-width:0;">
               <div style="font-weight:700;font-size:15px;color:#1c1c1e;">{{ dish.name }}</div>
-              <div v-if="dish.description" style="font-size:12px;color:#6d6d72;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ dish.description }}</div>
+              <div v-if="dish.description" style="font-size:12px;color:#6d6d72;margin-top:3px;word-break:break-all;white-space:normal;">{{ dish.description }}</div>
               <div class="kiss-price" style="margin-top:5px;">{{ dish.price }}个😘</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -139,18 +139,46 @@
         </div>
 
         <div v-for="item in cart.items" :key="item.dishId" class="cart-item-row">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <span style="font-weight:600;color:#1c1c1e;">{{ item.dishName }}</span>
-              <span style="color:#aeaeb2;font-size:12px;margin-left:6px;">× {{ item.quantity }}</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <!-- 菜品缩略图 -->
+            <div style="width:44px;height:44px;border-radius:8px;background:#fef4f5;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px;">
+              <img v-if="item.imageFileId" :src="thumbUrl(item.imageFileId)" style="width:44px;height:44px;object-fit:cover;" />
+              <span v-else>🍽️</span>
             </div>
-            <span class="kiss-price">{{ item.price * item.quantity }}个😘</span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <span style="font-weight:600;color:#1c1c1e;font-size:14px;">{{ item.dishName }}</span>
+                  <span style="color:#aeaeb2;font-size:12px;margin-left:5px;">×{{ item.quantity }}</span>
+                </div>
+                <span class="kiss-price" style="font-size:13px;">{{ item.price * item.quantity }}😘</span>
+              </div>
+              <!-- 备注：点击展开 -->
+              <div style="margin-top:5px;">
+                <div
+                  v-if="!remarkOpen[item.dishId] && !itemRemarks[item.dishId]"
+                  style="font-size:12px;color:#aeaeb2;cursor:pointer;display:inline-flex;align-items:center;gap:3px;"
+                  @click="openRemark(item.dishId)"
+                >
+                  <span style="font-size:11px;">＋</span> 添加备注
+                </div>
+                <div v-else style="display:flex;align-items:center;gap:6px;">
+                  <input
+                    :ref="el => remarkRefs[item.dishId] = el"
+                    v-model="itemRemarks[item.dishId]"
+                    placeholder="如：少辣 / 不要香菜"
+                    class="remark-input-compact"
+                    @blur="if (!itemRemarks[item.dishId]) remarkOpen[item.dishId] = false"
+                  />
+                  <span
+                    v-if="itemRemarks[item.dishId]"
+                    style="color:#aeaeb2;font-size:14px;cursor:pointer;flex-shrink:0;"
+                    @click="clearRemark(item.dishId)"
+                  >×</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <input
-            v-model="itemRemarks[item.dishId]"
-            placeholder="备注（如：少辣/不要香菜）"
-            class="remark-input"
-          />
         </div>
 
         <div class="total-row">
@@ -189,7 +217,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCategories, getDishes, getMealTypeInfo } from '../../api/orderMenu.js'
 import { createOrder, getCalorieAdvice } from '../../api/orderApi.js'
@@ -259,6 +287,19 @@ const orderRemark = ref('')
 
 // 每道菜的独立备注，key = dishId
 const itemRemarks = reactive({})
+// 控制备注输入框是否展开
+const remarkOpen = reactive({})
+const remarkRefs = reactive({})
+
+function openRemark(dishId) {
+  remarkOpen[dishId] = true
+  nextTick(() => remarkRefs[dishId]?.focus())
+}
+
+function clearRemark(dishId) {
+  itemRemarks[dishId] = ''
+  remarkOpen[dishId] = false
+}
 
 // AI 热量分析状态
 const aiLoading = ref(false)
@@ -360,6 +401,7 @@ async function doSubmitOrder() {
     showCart.value = false
     orderRemark.value = ''
     Object.keys(itemRemarks).forEach(k => delete itemRemarks[k])
+    Object.keys(remarkOpen).forEach(k => delete remarkOpen[k])
     showToast({ message: '下单成功！等待小岳接单 🍳', type: 'success' })
     router.push('/order/orders')
   } catch (e) {
@@ -694,6 +736,23 @@ async function doSubmitOrder() {
   border-color: #c96b7e;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(201,107,126,0.1);
+}
+.remark-input-compact {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid #e5e5ea;
+  font-size: 12px;
+  outline: none;
+  color: #1c1c1e;
+  background: #f7f7f9;
+  font-family: inherit;
+  transition: border-color 0.18s;
+}
+.remark-input-compact:focus {
+  border-color: #c96b7e;
+  background: #fff;
 }
 
 /* ── AI 区 ── */
