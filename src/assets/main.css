@@ -1,5 +1,24 @@
 @import './base.css';
 
+/* ==============================
+   CSS 变量 — Apple 风格色板
+   ============================== */
+:root {
+  --bg-page:       #f2f2f7;
+  --bg-card:       #ffffff;
+  --color-primary: #c96b7e;
+  --color-primary-light: #fef4f5;
+  --text-title:    #1c1c1e;
+  --text-sub:      #6d6d72;
+  --text-tertiary: #aeaeb2;
+  --separator:     #e5e5ea;
+  --color-success: #34c759;
+  --color-warning: #ff9f0a;
+  --radius-card:   14px;
+  --radius-btn:    12px;
+  --shadow-card:   0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
 html,
 body,
 #app {
@@ -13,8 +32,8 @@ body,
 body {
   margin: 0;
   min-width: 320px;
-  color: #241b16;
-  background: #f5efe4;
+  color: var(--text-title);
+  background: var(--bg-page);
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

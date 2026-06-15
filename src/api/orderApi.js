@@ -1,0 +1,11 @@
+import req from './orderRequest.js'
+export const createOrder = (data) => req.post('/order/orders', data)
+export const getMyOrders = () => req.get('/order/orders/my')
+export const getOrderById = (id) => req.get(`/order/orders/${id}`)
+export const completeOrder = (id) => req.post(`/order/orders/${id}/complete`)
+export const getOrderHistory = () => req.get('/order/orders/history')
+export const submitReview = (data) => req.post('/order/reviews', data)
+export const getReview = (orderId) => req.get(`/order/reviews/${orderId}`)
+export const getCalorieAdvice = (items) => req.post('/order/ai/calorie', { items })
+export const getAiConfig = () => req.get('/order/admin/ai-config')
+export const updateAiConfig = (data) => req.put('/order/admin/ai-config', data)

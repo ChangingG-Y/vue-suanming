@@ -1,0 +1,12 @@
+import req from './orderRequest.js'
+export const getAdminOrders = (state) => req.get('/order/admin/orders', { params: { state } })
+export const acceptOrder = (id) => req.post(`/order/admin/orders/${id}/accept`)
+export const serveOrder = (id) => req.post(`/order/admin/orders/${id}/serve`)
+export const getAdminCategories = () => req.get('/order/admin/categories')
+export const saveCategory = (data) => req.post('/order/admin/categories', data)
+export const updateCategory = (id, data) => req.put(`/order/admin/categories/${id}`, data)
+export const deleteCategory = (id) => req.delete(`/order/admin/categories/${id}`)
+export const getAdminDishes = (categoryId) => req.get('/order/admin/dishes', { params: { categoryId } })
+export const saveDish = (data) => req.post('/order/admin/dishes', data)
+export const updateDish = (id, data) => req.put(`/order/admin/dishes/${id}`, data)
+export const deleteDish = (id) => req.delete(`/order/admin/dishes/${id}`)
