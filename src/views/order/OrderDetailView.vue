@@ -98,7 +98,7 @@
             <img
               :src="resolveFileUrl(img.thumbnailUrl || img.url)"
               style="width:80px;height:80px;object-fit:cover;cursor:pointer;"
-              @click="previewImage(img.url)"
+              @click="previewImages(idx)"
             />
           </div>
         </div>
@@ -140,12 +140,6 @@
       </div>
     </van-dialog>
 
-    <!-- 图片预览弹窗 -->
-    <van-popup v-model:show="showImagePreview" style="background:transparent;" @click="showImagePreview = false">
-      <div style="max-width:100vw;max-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <img :src="previewUrl" style="max-width:90vw;max-height:85vh;border-radius:12px;object-fit:contain;" />
-      </div>
-    </van-popup>
   </div>
 </template>
 
@@ -155,14 +149,12 @@ import { useRoute } from 'vue-router'
 import { getOrderById, completeOrder } from '../../api/orderApi.js'
 import { fileUrl, thumbUrl } from '../../api/orderFile.js'
 import { MEAL_NAMES, MEAL_EMOJIS, STATE_NAMES } from '../../utils/mealType.js'
-import { showToast } from 'vant'
+import { showToast, showImagePreview } from 'vant'
 
 const route = useRoute()
 const order = ref(null)
 const loading = ref(true)
 const showPayConfirm = ref(false)
-const showImagePreview = ref(false)
-const previewUrl = ref('')
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -193,9 +185,10 @@ function resolveFileUrl(url) {
   return match[2] ? thumbUrl(match[1]) : fileUrl(match[1])
 }
 
-function previewImage(url) {
-  previewUrl.value = resolveFileUrl(url)
-  showImagePreview.value = true
+function previewImages(startIdx) {
+  const images = (order.value?.review?.images || []).map(img => resolveFileUrl(img.url))
+  if (!images.length) return
+  showImagePreview({ images, startPosition: startIdx, closeable: true })
 }
 
 onMounted(async () => {

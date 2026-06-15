@@ -13,6 +13,7 @@ const DEFAULTS = {
   tab2Icon: '📖',
   tab2Label: '干饭史',
   adminTitle: '小新补给站 管理',
+  successMsg: '下单成功！等待接单 🍳',
 }
 
 export const useLayoutConfigStore = defineStore('layoutConfig', () => {

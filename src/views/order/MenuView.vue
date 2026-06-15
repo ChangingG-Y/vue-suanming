@@ -61,46 +61,58 @@
       <!-- 左侧分类 -->
       <van-sidebar v-model="activeCategoryIndex" style="width:88px;flex-shrink:0;overflow-y:auto;background:#f2f2f7;">
         <van-sidebar-item
-          v-for="cat in categories" :key="cat.id"
-          :title="cat.name"
-          @click="onCategoryClick(cat)"
+          v-for="(sec, i) in sections" :key="sec.category.id"
+          :title="sec.category.name"
+          @click="scrollToSection(i)"
         />
       </van-sidebar>
 
-      <!-- 右侧菜品列表 -->
-      <div style="flex:1;overflow-y:auto;padding:8px;">
-        <div v-if="loadingDishes" style="text-align:center;padding:40px;color:#aeaeb2;">
-          <van-loading color="#c96b7e" />
-          <p style="margin-top:8px;font-size:13px;">加载中…</p>
-        </div>
-        <div v-else-if="dishes.length === 0" style="text-align:center;padding:40px;color:#aeaeb2;">
-          <div style="font-size:36px;">🍽️</div>
-          <p style="margin-top:8px;font-size:13px;">暂无菜品</p>
-        </div>
-        <template v-else>
-          <div
-            v-for="(dish, i) in dishes" :key="dish.id"
-            class="dish-card"
-            :style="{ animationDelay: i * 0.04 + 's' }"
-          >
-            <div class="dish-img">
-              <img v-if="dish.imageFileId" :src="thumbUrl(dish.imageFileId)" style="width:72px;height:72px;border-radius:10px;object-fit:cover;" />
-              <span v-else style="font-size:28px;">🍽️</span>
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:700;font-size:15px;color:#1c1c1e;">{{ dish.name }}</div>
-              <div v-if="dish.description" style="font-size:12px;color:#6d6d72;margin-top:3px;word-break:break-all;white-space:normal;">{{ dish.description }}</div>
-              <div class="kiss-price" style="margin-top:5px;">{{ dish.price }}个😘</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-              <template v-if="cart.getQuantity(dish.id) > 0">
-                <button class="qty-btn minus" @click="cart.removeDish(dish.id)">－</button>
-                <span class="qty-count">{{ cart.getQuantity(dish.id) }}</span>
-              </template>
-              <button class="qty-btn plus" @click="cart.addDish(dish)">＋</button>
-            </div>
+      <!-- 右侧：所有分类瀑布流 -->
+      <div ref="scrollContainer" style="flex:1;overflow-y:auto;padding:0 8px 8px;" @scroll="onScroll">
+        <template v-if="sections.length === 0">
+          <div style="text-align:center;padding:40px;color:#aeaeb2;">
+            <van-loading color="#c96b7e" />
+            <p style="margin-top:8px;font-size:13px;">加载中…</p>
           </div>
         </template>
+        <div
+          v-for="(sec, i) in sections"
+          :key="sec.category.id"
+          :ref="el => { if (el) sectionRefs[i] = el }"
+          class="category-section"
+        >
+          <div class="category-header">{{ sec.category.name }}</div>
+          <div v-if="sec.loading" style="text-align:center;padding:16px;color:#aeaeb2;">
+            <van-loading color="#c96b7e" size="18px" />
+          </div>
+          <div v-else-if="sec.dishes.length === 0" style="text-align:center;padding:16px;color:#aeaeb2;font-size:13px;">
+            <span style="font-size:24px;">🍽️</span><br>暂无菜品
+          </div>
+          <template v-else>
+            <div
+              v-for="(dish, di) in sec.dishes" :key="dish.id"
+              class="dish-card"
+              :style="{ animationDelay: (i * 0.06 + di * 0.04) + 's' }"
+            >
+              <div class="dish-img">
+                <img v-if="dish.imageFileId" :src="thumbUrl(dish.imageFileId)" style="width:72px;height:72px;border-radius:10px;object-fit:cover;" />
+                <span v-else style="font-size:28px;">🍽️</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:15px;color:#1c1c1e;">{{ dish.name }}</div>
+                <div v-if="dish.description" style="font-size:12px;color:#6d6d72;margin-top:3px;word-break:break-all;white-space:normal;">{{ dish.description }}</div>
+                <div class="kiss-price" style="margin-top:5px;">{{ dish.price }}个😘</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <template v-if="cart.getQuantity(dish.id) > 0">
+                  <button class="qty-btn minus" @click="cart.removeDish(dish.id)">－</button>
+                  <span class="qty-count">{{ cart.getQuantity(dish.id) }}</span>
+                </template>
+                <button class="qty-btn plus" @click="cart.addDish(dish)">＋</button>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
     </div>
 
@@ -168,7 +180,7 @@
                     v-model="itemRemarks[item.dishId]"
                     placeholder="如：少辣 / 不要香菜"
                     class="remark-input-compact"
-                    @blur="if (!itemRemarks[item.dishId]) remarkOpen[item.dishId] = false"
+                    @blur="collapseRemarkIfEmpty(item.dishId)"
                   />
                   <span
                     v-if="itemRemarks[item.dishId]"
@@ -223,6 +235,7 @@ import { getCategories, getDishes, getMealTypeInfo } from '../../api/orderMenu.j
 import { createOrder, getCalorieAdvice } from '../../api/orderApi.js'
 import { useCartStore } from '../../stores/cart.js'
 import { useOrderAuthStore } from '../../stores/orderAuth.js'
+import { useLayoutConfigStore } from '../../stores/layoutConfig.js'
 import { thumbUrl } from '../../api/orderFile.js'
 import { MEAL_NAMES, MEAL_EMOJIS } from '../../utils/mealType.js'
 import { showToast } from 'vant'
@@ -230,6 +243,7 @@ import { showToast } from 'vant'
 const cart = useCartStore()
 const router = useRouter()
 const authStore = useOrderAuthStore()
+const layoutStore = useLayoutConfigStore()
 
 // 退出登录
 function doLogout() {
@@ -278,10 +292,11 @@ function confirmMealPick() {
 // ---- end ----
 
 const categories = ref([])
-const dishes = ref([])
+const sections = ref([])
+const sectionRefs = []
+const scrollContainer = ref(null)
 const activeCategoryIndex = ref(0)
 const mealInfo = ref(null)
-const loadingDishes = ref(false)
 const showCart = ref(false)
 const orderRemark = ref('')
 
@@ -301,6 +316,10 @@ function clearRemark(dishId) {
   remarkOpen[dishId] = false
 }
 
+function collapseRemarkIfEmpty(dishId) {
+  if (!itemRemarks[dishId]) remarkOpen[dishId] = false
+}
+
 // AI 热量分析状态
 const aiLoading = ref(false)
 const aiAdvice = ref('')
@@ -312,30 +331,50 @@ onMounted(async () => {
     const [cats, info] = await Promise.all([getCategories(), getMealTypeInfo()])
     categories.value = cats || []
     mealInfo.value = info
-    // 用后端返回的餐次初始化选择器
     if (info?.mealType !== undefined) {
       selectedMealType.value = info.mealType
     }
     if (cats && cats.length > 0) {
-      loadingDishes.value = true
-      dishes.value = await getDishes(cats[0].id)
-      loadingDishes.value = false
+      sections.value = cats.map(c => ({ category: c, dishes: [], loading: true }))
+      cats.forEach(async (cat, i) => {
+        try {
+          const d = await getDishes(cat.id)
+          sections.value[i] = { ...sections.value[i], dishes: d || [], loading: false }
+        } catch {
+          sections.value[i] = { ...sections.value[i], dishes: [], loading: false }
+        }
+      })
     }
   } catch (e) {
     showToast({ message: e.message, type: 'fail' })
   }
 })
 
-async function onCategoryClick(cat) {
-  const idx = categories.value.findIndex(c => c.id === cat.id)
+function scrollToSection(idx) {
   activeCategoryIndex.value = idx
-  loadingDishes.value = true
-  try {
-    dishes.value = await getDishes(cat.id)
-  } catch (e) {
-    showToast({ message: e.message, type: 'fail' })
+  const el = sectionRefs[idx]
+  const container = scrollContainer.value
+  if (el && container) {
+    const containerRect = container.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    // 精确计算：让分类区块顶部恰好对齐容器顶部
+    // 此时分类标题 natural position = 0，不会偏移，第一个菜品从 headerHeight 开始，无遮挡
+    const targetScrollTop = container.scrollTop + (elRect.top - containerRect.top)
+    container.scrollTo({ top: targetScrollTop, behavior: 'smooth' })
   }
-  loadingDishes.value = false
+}
+
+function onScroll() {
+  const container = scrollContainer.value
+  if (!container) return
+  const containerTop = container.getBoundingClientRect().top
+  let activeIdx = 0
+  for (let i = 0; i < sectionRefs.length; i++) {
+    const el = sectionRefs[i]
+    if (!el) continue
+    if (el.getBoundingClientRect().top - containerTop <= 50) activeIdx = i
+  }
+  activeCategoryIndex.value = activeIdx
 }
 
 function openCheckout() {
@@ -402,7 +441,7 @@ async function doSubmitOrder() {
     orderRemark.value = ''
     Object.keys(itemRemarks).forEach(k => delete itemRemarks[k])
     Object.keys(remarkOpen).forEach(k => delete remarkOpen[k])
-    showToast({ message: '下单成功！等待小岳接单 🍳', type: 'success' })
+    showToast({ message: layoutStore.config.successMsg || '下单成功！', type: 'success' })
     router.push('/order/orders')
   } catch (e) {
     showToast({ message: e.message, type: 'fail' })
@@ -520,6 +559,18 @@ async function doSubmitOrder() {
   transform: scale(1.04);
 }
 .picker-chip:active { transform: scale(0.95); }
+
+/* ── 分类区块 ── */
+.category-section {
+  margin-bottom: 4px;
+}
+.category-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6d6d72;
+  padding: 10px 4px 6px;
+  letter-spacing: 0.3px;
+}
 
 /* ── 菜品卡片 ── */
 .dish-card {

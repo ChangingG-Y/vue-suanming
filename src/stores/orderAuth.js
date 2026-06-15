@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useCartStore } from './cart.js'
 
 export const useOrderAuthStore = defineStore('orderAuth', () => {
   const token = ref(localStorage.getItem('order_token') || '')
@@ -30,6 +31,7 @@ export const useOrderAuthStore = defineStore('orderAuth', () => {
     localStorage.removeItem('order_role')
     localStorage.removeItem('order_nickname')
     localStorage.removeItem('order_tenant_id')
+    useCartStore().clear()
   }
 
   return { token, role, nickname, tenantId, isAdmin, isSuperAdmin, setAuth, clearAuth }

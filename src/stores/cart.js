@@ -1,11 +1,30 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+
+const CART_KEY = 'order_cart'
+
+function loadFromStorage() {
+  try {
+    return JSON.parse(localStorage.getItem(CART_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
 
 export const useCartStore = defineStore('cart', () => {
-  const items = ref([]) // [{ dishId, dishName, price, quantity, imageFileId }]
+  const items = ref(loadFromStorage())
 
   const totalCount = computed(() => items.value.reduce((s, i) => s + i.quantity, 0))
   const totalKiss = computed(() => items.value.reduce((s, i) => s + i.price * i.quantity, 0))
+
+  // 变化时同步到 localStorage
+  watch(items, val => {
+    if (val.length > 0) {
+      localStorage.setItem(CART_KEY, JSON.stringify(val))
+    } else {
+      localStorage.removeItem(CART_KEY)
+    }
+  }, { deep: true })
 
   function addDish(dish) {
     const exist = items.value.find(i => i.dishId === dish.id)
@@ -35,6 +54,7 @@ export const useCartStore = defineStore('cart', () => {
 
   function clear() {
     items.value = []
+    localStorage.removeItem(CART_KEY)
   }
 
   // 从订单 items 恢复购物车（撤单时使用）

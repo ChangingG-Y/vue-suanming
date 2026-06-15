@@ -59,6 +59,11 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
+// 注册 Service Worker（PWA 安装条件）
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/suanming/sw.js').catch(() => {})
+}
+
 const app = createApp(App)
 const pinia = createPinia()
 

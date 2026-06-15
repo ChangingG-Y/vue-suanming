@@ -47,6 +47,15 @@
         </div>
       </div>
 
+      <!-- 其他文案 -->
+      <div class="section-title">其他文案</div>
+      <div class="config-card">
+        <div class="field-row">
+          <label>下单成功</label>
+          <input v-model="form.successMsg" class="field-input" placeholder="下单成功！等待接单 🍳" />
+        </div>
+      </div>
+
       <!-- 预览 -->
       <div class="section-title">预览</div>
       <div class="preview-card">
@@ -84,6 +93,7 @@ const form = ref({
   loginSub: '',
   loginBtn: '',
   adminTitle: '',
+  successMsg: '',
 })
 
 const tabs = ref([
@@ -101,6 +111,7 @@ onMounted(async () => {
       form.value.loginSub = cfg.loginSub || ''
       form.value.loginBtn = cfg.loginBtn || ''
       form.value.adminTitle = cfg.adminTitle || ''
+      form.value.successMsg = cfg.successMsg || ''
       tabs.value[0].icon = cfg.tab0Icon || '🍱'
       tabs.value[0].label = cfg.tab0Label || '点菜'
       tabs.value[1].icon = cfg.tab1Icon || '🍖'

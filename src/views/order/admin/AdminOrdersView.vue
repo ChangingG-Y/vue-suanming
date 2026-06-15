@@ -101,15 +101,22 @@ const OrderList = defineComponent({
               ]),
               h('span', { style: 'font-size:12px;color:#aeaeb2;' }, formatTime(order.createdAt)),
             ]),
-            // 菜品
+            // 菜品（含单品备注）
             h('div', { style: 'background:#f2f2f7;border-radius:10px;padding:8px 10px;margin-bottom:8px;' },
               (order.items || []).map(item =>
-                h('div', { key: item.dishId, style: 'display:flex;justify-content:space-between;font-size:13px;padding:2px 0;color:#1c1c1e;' }, [
-                  h('span', null, item.dishName),
-                  h('span', { style: 'color:#aeaeb2;' }, `× ${item.quantity}`)
+                h('div', { key: item.dishId, style: 'padding:2px 0;' }, [
+                  h('div', { style: 'display:flex;justify-content:space-between;font-size:13px;color:#1c1c1e;' }, [
+                    h('span', null, item.dishName),
+                    h('span', { style: 'color:#aeaeb2;' }, `× ${item.quantity}`)
+                  ]),
+                  item.remark ? h('div', { style: 'font-size:11px;color:#c96b7e;padding-left:2px;margin-top:1px;' }, `└ ${item.remark}`) : null
                 ])
               )
             ),
+            // 整单备注
+            order.remark ? h('div', {
+              style: 'margin-bottom:8px;padding:7px 10px;background:#fff8ed;border-radius:8px;font-size:12px;color:#6d6d72;line-height:1.5;'
+            }, `📝 ${order.remark}`) : null,
             // 底部
             h('div', { style: 'display:flex;justify-content:space-between;align-items:center;' }, [
               h('span', { style: 'font-size:13px;color:#c96b7e;font-weight:600;' }, `${order.totalKiss}个😘`),

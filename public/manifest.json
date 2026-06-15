@@ -1,0 +1,25 @@
+{
+  "name": "小新补给站",
+  "short_name": "点饭饭",
+  "description": "小新补给站点餐系统",
+  "start_url": "/suanming/order/login",
+  "scope": "/suanming/",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#c96b7e",
+  "orientation": "portrait-primary",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/suanming/hutao-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/suanming/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
