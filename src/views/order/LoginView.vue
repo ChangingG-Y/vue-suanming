@@ -52,13 +52,14 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { login } from '../../api/orderAuth.js'
-import { getLayoutConfig } from '../../api/orderConfig.js'
+import { getPublicLayoutConfig, getLayoutConfig } from '../../api/orderConfig.js'
 import { useOrderAuthStore } from '../../stores/orderAuth.js'
 import { useLayoutConfigStore } from '../../stores/layoutConfig.js'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useOrderAuthStore()
 const layoutStore = useLayoutConfigStore()
 const layout = computed(() => layoutStore.config)
@@ -122,8 +123,20 @@ async function doLogin() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadHistory()
+  // 读 ?tenantId= 参数，无需登录直接拉对应租户的配置
+  const urlTenantId = route.query.tenantId ? Number(route.query.tenantId) : null
+  // 如果 URL 有 tenantId，记住它；否则用上次记住的
+  const storedTenantId = localStorage.getItem('order_login_tenant_id')
+  const tenantId = urlTenantId || (storedTenantId ? Number(storedTenantId) : 1)
+  if (urlTenantId) localStorage.setItem('order_login_tenant_id', String(urlTenantId))
+  if (!layoutStore.loaded) {
+    try {
+      const cfg = await getPublicLayoutConfig(tenantId)
+      if (cfg) layoutStore.setConfig(cfg)
+    } catch {}
+  }
 })
 </script>
 

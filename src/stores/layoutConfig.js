@@ -22,12 +22,19 @@ export const useLayoutConfigStore = defineStore('layoutConfig', () => {
   function setConfig(data) {
     config.value = { ...DEFAULTS, ...data }
     loaded.value = true
+    applyDocumentTitle()
+  }
+
+  function applyDocumentTitle() {
+    const title = config.value.loginTitle || DEFAULTS.loginTitle
+    document.title = title
   }
 
   function reset() {
     config.value = { ...DEFAULTS }
     loaded.value = false
+    applyDocumentTitle()
   }
 
-  return { config, loaded, setConfig, reset }
+  return { config, loaded, setConfig, reset, applyDocumentTitle }
 })

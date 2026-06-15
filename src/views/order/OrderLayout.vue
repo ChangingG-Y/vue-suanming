@@ -48,6 +48,8 @@ onMounted(async () => {
       const data = await getLayoutConfig()
       if (data) layoutStore.setConfig(data)
     } catch {}
+  } else {
+    layoutStore.applyDocumentTitle()
   }
 })
 </script>
