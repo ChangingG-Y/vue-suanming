@@ -22,17 +22,43 @@
 
       <!-- 评分 -->
       <div class="order-card">
-        <div style="font-weight:700;color:#1c1c1e;margin-bottom:12px;">你今天吃得开心吗？</div>
-        <div class="heart-rating">
-          <span
-            v-for="i in 10"
-            :key="i"
-            :class="['heart', { active: i <= score }]"
-            @click="score = i"
-          >{{ i <= score ? '💗' : '🤍' }}</span>
+        <div style="font-weight:700;color:#1c1c1e;margin-bottom:14px;">你今天吃得开心吗？</div>
+
+        <!-- 大号分数展示 -->
+        <div style="text-align:center;margin-bottom:16px;">
+          <div class="score-circle">
+            <span class="score-number">{{ formatScore(score) }}</span>
+            <span class="score-unit">分</span>
+          </div>
+          <div style="font-size:12px;color:#aeaeb2;margin-top:6px;">{{ scoreLabel }}</div>
         </div>
-        <div style="text-align:center;margin-top:8px;font-size:14px;color:#c96b7e;font-weight:600;">
-          {{ score }} 分 / 10 分
+
+        <!-- 滑动条 -->
+        <div style="padding:0 8px;">
+          <input
+            type="range"
+            min="0.5"
+            max="10"
+            step="0.5"
+            v-model.number="score"
+            class="score-slider"
+            :style="{ '--pct': `${scorePct}%` }"
+          />
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#aeaeb2;margin-top:4px;">
+            <span>0.5</span>
+            <span>5</span>
+            <span>10</span>
+          </div>
+        </div>
+
+        <!-- 快捷分数按钮 -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px;">
+          <button
+            v-for="v in quickScores"
+            :key="v"
+            :class="['quick-btn', { active: score === v }]"
+            @click="score = v"
+          >{{ formatScore(v) }}</button>
         </div>
       </div>
 
@@ -101,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrderById, submitReview } from '../../api/orderApi.js'
 import { uploadFile } from '../../api/orderFile.js'
@@ -112,13 +138,31 @@ import ImageCropper from '../../components/order/ImageCropper.vue'
 const route = useRoute()
 const router = useRouter()
 const order = ref(null)
-const score = ref(0)
+const score = ref(8)
 const content = ref('')
-const uploadedImages = ref([]) // [{ fileId, previewUrl }]
+const uploadedImages = ref([])
 const submitting = ref(false)
 const fileInput = ref(null)
 const showCropper = ref(false)
 const cropSrc = ref('')
+
+// 快捷分数按钮（整数部分）
+const quickScores = [0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+const scorePct = computed(() => ((score.value - 0.5) / 9.5) * 100)
+
+const scoreLabel = computed(() => {
+  if (score.value <= 2) return '不太满意 😞'
+  if (score.value <= 4) return '一般般 😐'
+  if (score.value <= 6) return '还不错 🙂'
+  if (score.value <= 8) return '很好吃！😊'
+  if (score.value < 10) return '超级好吃！😍'
+  return '满分小可爱！'
+})
+
+function formatScore(v) {
+  return Number(v).toFixed(1).replace(/\.0$/, '')
+}
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -147,7 +191,6 @@ function onFileSelected(e) {
     showCropper.value = true
   }
   reader.readAsDataURL(file)
-  // reset input
   e.target.value = ''
 }
 
@@ -168,7 +211,7 @@ function removeImage(idx) {
 }
 
 async function submitReviewAction() {
-  if (score.value === 0) {
+  if (!score.value || score.value <= 0) {
     showToast('请先打分哦~')
     return
   }
@@ -178,10 +221,10 @@ async function submitReviewAction() {
       orderId: route.params.orderId,
       score: score.value,
       content: content.value,
-      imageFileIds: uploadedImages.value.map(i => i.fileId),
+      fileIds: uploadedImages.value.map(i => i.fileId),
     })
     showToast({ message: '评价提交成功！', type: 'success' })
-    router.back()
+    router.replace(`/order/orders/${route.params.orderId}`)
   } catch (e) {
     showToast({ message: e.message, type: 'fail' })
   }
@@ -222,22 +265,87 @@ async function submitReviewAction() {
   font-weight: 500;
 }
 
-.heart-rating {
-  display: flex;
+/* 大号分数圆圈 */
+.score-circle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  background: linear-gradient(135deg, #c96b7e 0%, #e8829a 100%);
+  border-radius: 50%;
+  width: 90px;
+  height: 90px;
   justify-content: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  box-shadow: 0 4px 16px rgba(201, 107, 126, 0.35);
 }
 
-.heart {
-  font-size: 24px;
+.score-number {
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.score-unit {
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* 滑动条 */
+.score-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #c96b7e 0%, #c96b7e var(--pct, 75%), #e5e5ea var(--pct, 75%), #e5e5ea 100%);
+  outline: none;
   cursor: pointer;
-  transition: transform 0.1s;
-  user-select: none;
 }
 
-.heart:hover {
-  transform: scale(1.2);
+.score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #c96b7e;
+  box-shadow: 0 2px 8px rgba(201, 107, 126, 0.45);
+  cursor: pointer;
+  border: 3px solid #fff;
+}
+
+.score-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #c96b7e;
+  box-shadow: 0 2px 8px rgba(201, 107, 126, 0.45);
+  cursor: pointer;
+  border: 3px solid #fff;
+}
+
+/* 快捷按钮 */
+.quick-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid #e5e5ea;
+  background: #f2f2f7;
+  color: #6d6d72;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quick-btn.active {
+  background: #c96b7e;
+  border-color: #c96b7e;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(201, 107, 126, 0.35);
+  transform: scale(1.1);
 }
 
 .btn-primary {

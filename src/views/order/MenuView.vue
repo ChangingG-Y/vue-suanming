@@ -335,6 +335,12 @@ async function doSubmitOrder() {
     return
   }
   try {
+    if (!manualSelected.value) {
+      mealInfo.value = await getMealTypeInfo()
+      if (mealInfo.value?.mealType !== undefined) {
+        selectedMealType.value = mealInfo.value.mealType
+      }
+    }
     const orderData = {
       mealType: selectedMealType.value,
       mealDate: selectedDate.value,

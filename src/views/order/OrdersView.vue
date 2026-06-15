@@ -17,7 +17,13 @@
 
     <!-- 订单列表 -->
     <div v-else>
-      <div v-for="(order, i) in orders" :key="order.id" class="order-card" :style="{ animationDelay: i * 0.05 + 's' }">
+      <div
+        v-for="(order, i) in orders"
+        :key="order.id"
+        class="order-card"
+        :style="{ animationDelay: i * 0.05 + 's' }"
+        @click="$router.push(`/order/orders/${order.id}`)"
+      >
         <!-- 订单头部 -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div style="display:flex;align-items:center;gap:8px;">
@@ -29,7 +35,7 @@
         </div>
 
         <!-- 下单时间 -->
-        <div style="font-size:12px;color:#aeaeb2;margin-bottom:8px;">{{ formatTime(order.createdAt) }}</div>
+        <div style="font-size:12px;color:#aeaeb2;margin-bottom:8px;">{{ formatTime(order.createdAt) }} · 点开看详情</div>
 
         <!-- 菜品列表 -->
         <div style="background:#f2f2f7;border-radius:10px;padding:8px 10px;margin-bottom:10px;">
@@ -50,7 +56,7 @@
               v-if="order.state === 2"
               class="btn-primary"
               style="padding:7px 14px;font-size:13px;"
-              @click="openPayConfirm(order)"
+              @click.stop="openPayConfirm(order)"
             >
               饭好了！支付😘 🍽️
             </button>
@@ -60,14 +66,14 @@
               v-if="order.state === 3 && !order.hasReview"
               class="btn-outline"
               style="padding:7px 14px;font-size:13px;"
-              @click="$router.push(`/order/review/${order.id}`)"
+              @click.stop="$router.push(`/order/review/${order.id}`)"
             >
               写评价
             </button>
 
             <!-- state==3 且有评价：显示评分 -->
-            <span v-if="order.state === 3 && order.hasReview" style="font-size:13px;color:#c96b7e;">
-              ⭐ {{ order.reviewScore }}/10
+            <span v-if="order.state === 3 && order.hasReview" class="score-badge">
+              {{ formatScore(order.reviewScore) }} 分
             </span>
           </div>
         </div>
@@ -113,7 +119,12 @@ function formatTime(ts) {
 
 function totalKissFromItems(items) {
   if (!items) return 0
-  return items.reduce((s, i) => s + (i.price || 1) * i.quantity, 0)
+  return items.reduce((s, i) => s + (i.itemPrice || i.price || 0) * i.quantity, 0)
+}
+
+function formatScore(score) {
+  if (score === null || score === undefined || score === '') return ''
+  return Number(score).toFixed(1).replace(/\.0$/, '')
 }
 
 async function loadOrders() {
@@ -199,6 +210,19 @@ onUnmounted(() => {
   font-size: 11px;
   padding: 2px 9px;
   font-weight: 700;
+}
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+  border-radius: 999px;
+  background: #fef4f5;
+  color: #c96b7e;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 5px 10px;
 }
 
 .status-badge {

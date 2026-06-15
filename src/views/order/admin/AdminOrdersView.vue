@@ -71,6 +71,11 @@ const OrderList = defineComponent({
       return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
     }
 
+    function formatScore(score) {
+      if (score === null || score === undefined || score === '') return ''
+      return Number(score).toFixed(1).replace(/\.0$/, '')
+    }
+
     return () => {
       if (props.orders.length === 0) {
         return h('div', { style: 'text-align:center;padding:40px;color:#aeaeb2;' }, [
@@ -117,7 +122,9 @@ const OrderList = defineComponent({
                   style: 'background:#c96b7e;color:#fff;border:none;border-radius:20px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;',
                   onClick: () => emit('serve', order.id)
                 }, '出餐 🍳') : null,
-                props.stateLabel === 'done' && order.reviewScore ? h('span', { style: 'font-size:13px;color:#c96b7e;' }, `⭐ ${order.reviewScore}/10`) : null,
+                props.stateLabel === 'done' && order.reviewScore ? h('span', {
+                  style: 'font-size:13px;color:#c96b7e;background:#fef4f5;border-radius:999px;padding:5px 10px;font-weight:800;'
+                }, `${formatScore(order.reviewScore)} 分`) : null,
               ])
             ]),
             // 评价内容（已完成且有评价）

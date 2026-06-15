@@ -46,7 +46,12 @@
 
           <!-- 展开内容 -->
           <div v-if="expandedDays.has(idx)" style="margin-top:10px;border-top:1px solid #e5e5ea;padding-top:10px;">
-            <div v-for="order in day.orders" :key="order.id" style="margin-bottom:10px;padding:10px;background:#f2f2f7;border-radius:10px;">
+            <div
+              v-for="order in day.orders"
+              :key="order.id"
+              style="margin-bottom:10px;padding:10px;background:#f2f2f7;border-radius:10px;"
+              @click.stop="router.push(`/order/orders/${order.id}`)"
+            >
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <span style="font-weight:600;color:#1c1c1e;">{{ MEAL_EMOJIS[order.mealType] }} {{ MEAL_NAMES[order.mealType] }}</span>
                 <span :class="`status-badge status-${order.state}`">{{ STATE_NAMES[order.state] }}</span>
@@ -57,10 +62,11 @@
               </div>
               <div style="display:flex;justify-content:space-between;margin-top:6px;align-items:center;">
                 <span style="font-size:12px;color:#c96b7e;font-weight:600;">小计：{{ order.totalKiss }}个😘</span>
-                <div v-if="order.reviewScore" style="font-size:13px;">
-                  <span v-for="i in 10" :key="i">{{ i <= order.reviewScore ? '💗' : '🤍' }}</span>
+                <div v-if="order.reviewScore" class="score-badge">
+                  {{ formatScore(order.reviewScore) }} 分
                 </div>
               </div>
+              <div style="font-size:11px;color:#aeaeb2;margin-top:4px;text-align:right;">点开看详情</div>
             </div>
           </div>
 
@@ -75,10 +81,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getOrderHistory } from '../../api/orderApi.js'
 import { MEAL_NAMES, MEAL_EMOJIS, STATE_NAMES } from '../../utils/mealType.js'
 import { showToast } from 'vant'
 
+const router = useRouter()
 const historyDays = ref([])
 const loading = ref(true)
 const expandedDays = ref(new Set())
@@ -108,6 +116,11 @@ function formatDate(dateStr) {
   const d = new Date(dateStr)
   const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   return `${d.getMonth() + 1}月${d.getDate()}日 ${days[d.getDay()]}`
+}
+
+function formatScore(score) {
+  if (score === null || score === undefined || score === '') return ''
+  return Number(score).toFixed(1).replace(/\.0$/, '')
 }
 
 function toggleDay(idx) {
@@ -179,6 +192,19 @@ onMounted(async () => {
   box-shadow: 0 1px 6px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.03);
   cursor: pointer;
   transition: transform 0.16s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #c96b7e;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 4px 9px;
 }
 .day-card:active { transform: scale(0.986); }
 
