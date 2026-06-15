@@ -3,10 +3,10 @@
     <main class="input-shell">
       <section class="input-panel">
         <div class="card-header">
-          <div class="brand-mark">胡</div>
+          <div class="brand-mark">新</div>
           <div>
-            <h1>胡桃排盘</h1>
-            <p>给胡桃大师准备的命盘工具，排盘后可直接进入 AI 问答。</p>
+            <h1>小新补给站🍱</h1>
+            <p>给小新准备的命盘工具，排盘后可直接进入 AI 问答。</p>
           </div>
         </div>
 
