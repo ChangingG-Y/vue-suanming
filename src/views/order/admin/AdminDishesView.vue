@@ -251,8 +251,8 @@ function onFileSelected(e) {
 async function onCropConfirm(blob) {
   showCropper.value = false
   try {
-    const fileId = await uploadFile(new File([blob], 'dish.jpg', { type: 'image/jpeg' }))
-    form.value.imageFileId = fileId
+    const result = await uploadFile(new File([blob], 'dish.jpg', { type: 'image/jpeg' }))
+    form.value.imageFileId = result.id  // 后端返回 FileRespDto，取 id 字段
     form.value.imagePreview = URL.createObjectURL(blob)
     showToast({ message: '图片上传成功', type: 'success' })
   } catch (e) {

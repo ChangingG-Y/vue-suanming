@@ -1,5 +1,5 @@
 <template>
-  <van-overlay :show="visible" z-index="2000" @click.stop>
+  <van-overlay :show="visible" z-index="3000" @click.stop>
     <div class="cropper-wrap" @click.stop>
       <div class="cropper-title">裁切图片（1:1）</div>
       <div class="cropper-box">
@@ -68,7 +68,7 @@ onUnmounted(() => {
 .cropper-title {
   font-size: 16px;
   font-weight: 700;
-  color: #e91e8c;
+  color: #1c1c1e;
   text-align: center;
   margin-bottom: 12px;
 }
@@ -98,7 +98,7 @@ onUnmounted(() => {
 }
 
 .btn-confirm {
-  background: linear-gradient(135deg, #ff6b9d, #ff9a9e) !important;
+  background: #c96b7e !important;
   color: #fff !important;
   font-weight: 700;
 }

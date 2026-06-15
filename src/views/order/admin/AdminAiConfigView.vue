@@ -22,7 +22,7 @@
       <!-- 提供商 -->
       <div class="config-card">
         <div class="config-label">AI 提供商</div>
-        <van-radio-group v-model="form.provider" direction="horizontal" style="margin-top:10px;gap:16px;">
+        <van-radio-group v-model="form.provider" direction="horizontal" style="margin-top:10px;gap:16px;" @change="onProviderChange">
           <van-radio name="doubao" checked-color="#c96b7e">
             <span style="font-size:14px;color:#1c1c1e;">豆包（火山引擎）</span>
           </van-radio>
@@ -34,15 +34,18 @@
 
       <!-- 模型 -->
       <div class="config-card">
-        <div class="config-label">模型 ID</div>
-        <input
+        <div class="config-label">模型</div>
+        <select
           v-model="form.model"
-          placeholder="如：doubao-seed-2-0-lite-260428"
           class="config-input"
-          style="margin-top:10px;"
-        />
-        <div style="font-size:11px;color:#aeaeb2;margin-top:4px;">
-          豆包推荐：doubao-seed-2-0-lite-260428 &nbsp;|&nbsp; DeepSeek推荐：deepseek-chat
+          style="margin-top:10px;cursor:pointer;"
+        >
+          <option v-for="m in currentModelOptions" :key="m.value" :value="m.value">
+            {{ m.label }}
+          </option>
+        </select>
+        <div style="font-size:11px;color:#aeaeb2;margin-top:6px;">
+          {{ form.provider === 'doubao' ? 'lite 速度最快、cost 最低；pro 效果最佳' : 'flash 速度快；pro 效果更佳' }}
         </div>
       </div>
 
@@ -104,12 +107,35 @@ const testing = ref(false)
 const testResult = ref('')
 const testError = ref('')
 
+// 各 provider 对应的模型选项（与后端 application.yml allowed-models 保持一致）
+const MODEL_OPTIONS = {
+  doubao: [
+    { value: 'doubao-seed-2-0-lite-260428',  label: 'Seed-2.0 Lite · 速度最快 ⚡' },
+    { value: 'doubao-seed-2-0-mini-260428',  label: 'Seed-2.0 Mini · 均衡' },
+    { value: 'doubao-seed-2-0-pro-260215',   label: 'Seed-2.0 Pro · 效果最佳 ✨' },
+  ],
+  deepseek: [
+    { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash · 速度快 ⚡' },
+    { value: 'deepseek-v4-pro',   label: 'DeepSeek V4 Pro · 效果最佳 ✨' },
+  ],
+}
+
 const form = ref({
   enabled: '1',
   provider: 'doubao',
   model: 'doubao-seed-2-0-lite-260428',
   prompt: ''
 })
+
+const currentModelOptions = computed(() => MODEL_OPTIONS[form.value.provider] || [])
+
+function onProviderChange(provider) {
+  // 切换 provider 时自动选中该 provider 的第一个模型
+  const opts = MODEL_OPTIONS[provider]
+  if (opts && opts.length > 0) {
+    form.value.model = opts[0].value
+  }
+}
 
 const aiEnabledBool = computed({
   get: () => form.value.enabled === '1',

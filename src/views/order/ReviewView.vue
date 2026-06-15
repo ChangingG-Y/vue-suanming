@@ -154,9 +154,9 @@ function onFileSelected(e) {
 async function onCropConfirm(blob) {
   showCropper.value = false
   try {
-    const fileId = await uploadFile(new File([blob], 'review.jpg', { type: 'image/jpeg' }))
+    const result = await uploadFile(new File([blob], 'review.jpg', { type: 'image/jpeg' }))
     const previewUrl = URL.createObjectURL(blob)
-    uploadedImages.value.push({ fileId, previewUrl })
+    uploadedImages.value.push({ fileId: result.id, previewUrl })
     showToast({ message: '上传成功', type: 'success' })
   } catch (e) {
     showToast({ message: '上传失败：' + e.message, type: 'fail' })
