@@ -90,18 +90,20 @@
           </div>
           <div
             v-if="uploadedImages.length < 3"
-            style="width:80px;height:80px;border:1.5px dashed #e5e5ea;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;background:#f2f2f7;"
+            style="width:80px;height:80px;border:1.5px dashed #e5e5ea;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;cursor:pointer;background:#f2f2f7;gap:2px;"
             @click="triggerUpload"
           >
-            📷
+            <span>{{ uploading ? '⏳' : '📷' }}</span>
+            <span v-if="uploading" style="font-size:10px;color:#aeaeb2;">上传中</span>
           </div>
         </div>
         <input
           ref="fileInput"
           type="file"
           accept="image/*"
+          multiple
           style="display:none"
-          @change="onFileSelected"
+          @change="onFilesSelected"
         />
       </div>
 
@@ -116,13 +118,6 @@
       </button>
     </div>
 
-    <!-- 图片裁切组件 -->
-    <ImageCropper
-      :visible="showCropper"
-      :img-src="cropSrc"
-      @confirm="onCropConfirm"
-      @cancel="showCropper = false"
-    />
   </div>
 </template>
 
@@ -133,7 +128,6 @@ import { getOrderById, submitReview } from '../../api/orderApi.js'
 import { uploadFile } from '../../api/orderFile.js'
 import { MEAL_NAMES, MEAL_EMOJIS } from '../../utils/mealType.js'
 import { showToast } from 'vant'
-import ImageCropper from '../../components/order/ImageCropper.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -142,9 +136,8 @@ const score = ref(8)
 const content = ref('')
 const uploadedImages = ref([])
 const submitting = ref(false)
+const uploading = ref(false)
 const fileInput = ref(null)
-const showCropper = ref(false)
-const cropSrc = ref('')
 
 // 快捷分数按钮（整数部分）
 const quickScores = [0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -182,27 +175,46 @@ function triggerUpload() {
   fileInput.value?.click()
 }
 
-function onFileSelected(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = (evt) => {
-    cropSrc.value = evt.target.result
-    showCropper.value = true
-  }
-  reader.readAsDataURL(file)
-  e.target.value = ''
+function resizeToMaxEdge(file, maxEdge = 1200) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxEdge || height > maxEdge) {
+        if (width >= height) { height = Math.round(height * maxEdge / width); width = maxEdge }
+        else { width = Math.round(width * maxEdge / height); height = maxEdge }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      canvas.toBlob(resolve, 'image/jpeg', 0.88)
+    }
+    img.src = url
+  })
 }
 
-async function onCropConfirm(blob) {
-  showCropper.value = false
+async function onFilesSelected(e) {
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''
+  const remaining = 3 - uploadedImages.value.length
+  const toProcess = files.slice(0, remaining)
+  if (!toProcess.length) return
+  uploading.value = true
   try {
-    const result = await uploadFile(new File([blob], 'review.jpg', { type: 'image/jpeg' }))
-    const previewUrl = URL.createObjectURL(blob)
-    uploadedImages.value.push({ fileId: result.id, previewUrl })
+    await Promise.all(toProcess.map(async (file) => {
+      const blob = await resizeToMaxEdge(file, 1200)
+      const result = await uploadFile(new File([blob], 'review.jpg', { type: 'image/jpeg' }), 'review')
+      const previewUrl = URL.createObjectURL(blob)
+      uploadedImages.value.push({ fileId: result.id, previewUrl })
+    }))
     showToast({ message: '上传成功', type: 'success' })
-  } catch (e) {
-    showToast({ message: '上传失败：' + e.message, type: 'fail' })
+  } catch (err) {
+    showToast({ message: '上传失败：' + err.message, type: 'fail' })
+  } finally {
+    uploading.value = false
   }
 }
 

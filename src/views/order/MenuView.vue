@@ -119,19 +119,21 @@
     <!-- ── 底部购物车栏 ── -->
     <Transition name="cart-slide">
       <div v-if="true" class="cart-bar">
-        <div class="cart-icon-wrap" :class="{ 'has-items': cart.totalCount > 0 }" @click="showCart = cart.totalCount > 0">
-          <span class="cart-emoji">🛒</span>
-          <Transition name="badge-pop">
-            <span v-if="cart.totalCount > 0" class="cart-badge">{{ cart.totalCount }}</span>
-          </Transition>
-        </div>
-        <div style="flex:1;">
-          <Transition name="fade-slide" mode="out-in">
-            <div v-if="cart.totalCount > 0" key="has" style="font-size:13px;color:#c96b7e;font-weight:600;">
-              共 {{ cart.totalKiss }}个😘
-            </div>
-            <div v-else key="empty" style="font-size:13px;color:#aeaeb2;">还没选菜哦~</div>
-          </Transition>
+        <div style="flex:1;display:flex;align-items:center;gap:0;cursor:pointer;" @click="showCart = cart.totalCount > 0">
+          <div class="cart-icon-wrap" :class="{ 'has-items': cart.totalCount > 0 }">
+            <span class="cart-emoji">🛒</span>
+            <Transition name="badge-pop">
+              <span v-if="cart.totalCount > 0" class="cart-badge">{{ cart.totalCount }}</span>
+            </Transition>
+          </div>
+          <div style="flex:1;padding-left:2px;">
+            <Transition name="fade-slide" mode="out-in">
+              <div v-if="cart.totalCount > 0" key="has" style="font-size:13px;color:#c96b7e;font-weight:600;">
+                共 {{ cart.totalKiss }}个😘
+              </div>
+              <div v-else key="empty" style="font-size:13px;color:#aeaeb2;">还没选菜哦~</div>
+            </Transition>
+          </div>
         </div>
         <Transition name="btn-pop">
           <button v-if="cart.totalCount > 0" class="btn-primary" style="padding:10px 22px;font-size:14px;" @click="openCheckout">
@@ -334,6 +336,9 @@ onMounted(async () => {
     if (info?.mealType !== undefined) {
       selectedMealType.value = info.mealType
     }
+    if (info?.orderDate) {
+      selectedDate.value = info.orderDate
+    }
     if (cats && cats.length > 0) {
       sections.value = cats.map(c => ({ category: c, dishes: [], loading: true }))
       cats.forEach(async (cat, i) => {
@@ -419,6 +424,9 @@ async function doSubmitOrder() {
       mealInfo.value = await getMealTypeInfo()
       if (mealInfo.value?.mealType !== undefined) {
         selectedMealType.value = mealInfo.value.mealType
+      }
+      if (mealInfo.value?.orderDate) {
+        selectedDate.value = mealInfo.value.orderDate
       }
     }
     const orderData = {

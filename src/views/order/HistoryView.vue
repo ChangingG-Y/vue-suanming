@@ -66,6 +66,9 @@
                   {{ formatScore(order.reviewScore) }} 分
                 </div>
               </div>
+              <div v-if="order.reviewContent" style="margin-top:6px;font-size:12px;color:#6d6d72;background:#fef4f5;border-radius:8px;padding:6px 10px;line-height:1.5;">
+                "{{ order.reviewContent }}"
+              </div>
               <div style="font-size:11px;color:#aeaeb2;margin-top:4px;text-align:right;">点开看详情</div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import req from './orderRequest.js'
 export const getAdminOrders = (state) => req.get('/order/admin/orders', { params: { state } })
+export const getAdminOrderById = (id) => req.get(`/order/admin/orders/${id}`)
 export const acceptOrder = (id) => req.post(`/order/admin/orders/${id}/accept`)
 export const serveOrder = (id) => req.post(`/order/admin/orders/${id}/serve`)
 export const getAdminCategories = () => req.get('/order/admin/categories')
