@@ -124,6 +124,12 @@ async function doLogin() {
 }
 
 onMounted(async () => {
+  // 有 token 直接进入对应页面（不需要重新登录）
+  if (authStore.token) {
+    if (authStore.isAdmin()) router.replace('/order/admin/orders')
+    else router.replace('/order/menu')
+    return
+  }
   loadHistory()
   // 读 ?tenantId= 参数，无需登录直接拉对应租户的配置
   const urlTenantId = route.query.tenantId ? Number(route.query.tenantId) : null

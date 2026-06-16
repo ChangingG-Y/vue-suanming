@@ -12,6 +12,19 @@ orderRequest.interceptors.request.use(config => {
   return config
 })
 
+function clearAuthAndRedirect() {
+  // 清 localStorage
+  localStorage.removeItem('order_token')
+  localStorage.removeItem('order_role')
+  localStorage.removeItem('order_nickname')
+  localStorage.removeItem('order_tenant_id')
+  localStorage.removeItem('order_cart')
+  // 跳登录（用 replace 避免返回时循环）
+  if (!window.location.pathname.includes('/order/login')) {
+    window.location.replace('/suanming/order/login')
+  }
+}
+
 // 响应拦截：统一处理错误
 // 后端返回格式：{ code, msg, data }，成功码为 0
 orderRequest.interceptors.response.use(
@@ -19,18 +32,16 @@ orderRequest.interceptors.response.use(
     const data = res.data
     if (data.code !== 0) {
       if (data.code === 11301) {
-        // 未登录，清除本地 token 并跳转登录
-        localStorage.removeItem('order_token')
-        localStorage.removeItem('order_role')
-        localStorage.removeItem('order_nickname')
-        localStorage.removeItem('order_tenant_id')
-        window.location.href = '/suanming/order/login'
+        clearAuthAndRedirect()
       }
       return Promise.reject(new Error(data.msg || '请求失败'))
     }
     return data.data
   },
-  err => Promise.reject(new Error(err.response?.data?.msg || err.message || '网络错误'))
+  err => {
+    if (err.response?.status === 401) clearAuthAndRedirect()
+    return Promise.reject(new Error(err.response?.data?.msg || err.message || '网络错误'))
+  }
 )
 
 export default orderRequest
