@@ -75,7 +75,12 @@
         </div>
 
         <div class="form-group">
-          <label>描述</label>
+          <label style="display:flex;justify-content:space-between;align-items:center;">
+            <span>描述</span>
+            <button type="button" class="btn-ai" @click="aiGenerateDesc" :disabled="aiGenerating">
+              {{ aiGenerating ? '生成中…' : '✨ AI帮我写' }}
+            </button>
+          </label>
           <input v-model="form.description" placeholder="简单描述一下" />
         </div>
 
@@ -143,6 +148,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getAdminCategories, getAdminDishes, saveDish, updateDish, deleteDish } from '../../../api/orderAdmin.js'
+import { generateDishDescription } from '../../../api/orderApi.js'
 import { uploadFile, thumbUrl } from '../../../api/orderFile.js'
 import { showToast } from 'vant'
 import ImageCropper from '../../../components/order/ImageCropper.vue'
@@ -159,6 +165,7 @@ const deletingDish = ref(null)
 const fileInput = ref(null)
 const showCropper = ref(false)
 const cropSrc = ref('')
+const aiGenerating = ref(false)
 
 const form = ref({
   name: '',
@@ -297,6 +304,22 @@ async function onCropConfirm(blob) {
   }
 }
 
+async function aiGenerateDesc() {
+  if (!form.value.name) {
+    showToast('请先填写菜品名称')
+    return
+  }
+  aiGenerating.value = true
+  try {
+    const desc = await generateDishDescription(form.value.name)
+    form.value.description = desc || ''
+  } catch (e) {
+    showToast({ message: e.message || 'AI生成失败', type: 'fail' })
+  } finally {
+    aiGenerating.value = false
+  }
+}
+
 async function saveDishForm() {
   if (!form.value.name) {
     showToast('请输入菜品名称')
@@ -393,6 +416,18 @@ async function doDelete() {
   cursor: pointer;
 }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-ai {
+  background: linear-gradient(135deg, #c96b7e, #e0a0b0);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-cancel {
   background: #ffffff;

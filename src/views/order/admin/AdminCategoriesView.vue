@@ -16,7 +16,7 @@
     <!-- 分类列表 -->
     <div v-else>
       <div
-        v-for="cat in categories"
+        v-for="(cat, catIdx) in categories"
         :key="cat.id"
         class="cat-item"
       >
@@ -25,7 +25,11 @@
           <div v-if="cat.description" style="font-size:12px;color:#aeaeb2;margin-top:3px;">{{ cat.description }}</div>
           <div style="font-size:11px;color:#aeaeb2;margin-top:3px;">排序：{{ cat.seq }}</div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <button class="sort-btn" :disabled="catIdx === 0" @click="moveUp(catIdx)">↑</button>
+            <button class="sort-btn" :disabled="catIdx === categories.length - 1" @click="moveDown(catIdx)">↓</button>
+          </div>
           <button class="btn-edit" @click="openEdit(cat)">编辑</button>
           <button class="btn-delete" @click="confirmDelete(cat)">删除</button>
         </div>
@@ -144,6 +148,35 @@ async function saveForm() {
   saving.value = false
 }
 
+async function moveUp(idx) {
+  if (idx === 0) return
+  await swapCatSeq(idx, idx - 1)
+}
+
+async function moveDown(idx) {
+  if (idx === categories.value.length - 1) return
+  await swapCatSeq(idx, idx + 1)
+}
+
+async function swapCatSeq(i, j) {
+  const a = categories.value[i]
+  const b = categories.value[j]
+  const seqA = a.seq ?? (i + 1)
+  const seqB = b.seq ?? (j + 1)
+  try {
+    await Promise.all([
+      updateCategory(a.id, { seq: seqB }),
+      updateCategory(b.id, { seq: seqA }),
+    ])
+    a.seq = seqB
+    b.seq = seqA
+    categories.value.splice(i, 1)
+    categories.value.splice(j, 0, a)
+  } catch (e) {
+    showToast({ message: e.message, type: 'fail' })
+  }
+}
+
 function confirmDelete(cat) {
   deletingCat.value = cat
   showDeleteConfirm.value = true
@@ -199,6 +232,18 @@ onMounted(loadCategories)
   font-size: 14px;
   cursor: pointer;
 }
+
+.sort-btn {
+  background: #f2f2f7;
+  border: none;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 12px;
+  color: #6d6d72;
+  cursor: pointer;
+  line-height: 1;
+}
+.sort-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .btn-edit {
   background: #fef4f5;

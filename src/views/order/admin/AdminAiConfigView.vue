@@ -104,15 +104,29 @@
       <div class="config-card" style="margin-top:16px;">
         <div class="config-label">测试AI连通性</div>
         <div style="font-size:12px;color:#aeaeb2;margin-top:4px;margin-bottom:10px;">
-          发送一道示例菜品测试当前配置是否正常工作
+          选好菜后发送，测试当前AI配置是否正常
         </div>
-        <button
-          class="btn-test"
-          :disabled="testing"
-          @click="testAi"
-        >
-          {{ testing ? '测试中...' : '🧪 发送测试请求' }}
-        </button>
+
+        <!-- 已选菜品预览 -->
+        <div v-if="testCart.length > 0" style="margin-bottom:10px;background:#f2f2f7;border-radius:10px;padding:8px 10px;">
+          <div v-for="item in testCart" :key="item.dishId" style="display:flex;justify-content:space-between;font-size:13px;color:#1c1c1e;padding:2px 0;">
+            <span>{{ item.dishName }}</span>
+            <span style="color:#aeaeb2;">× {{ item.quantity }}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-test" @click="showTestPicker = true">🍽️ 选菜</button>
+          <button
+            class="btn-test"
+            :disabled="testing || testCart.length === 0"
+            @click="testAi"
+          >
+            {{ testing ? '测试中...' : '🧪 发送测试' }}
+          </button>
+          <button v-if="testCart.length > 0" class="btn-clear" @click="testCart = []">清空</button>
+        </div>
+
         <div v-if="testResult" style="margin-top:10px;background:#f2f2f7;border-radius:10px;padding:10px 12px;font-size:13px;color:#1c1c1e;line-height:1.6;">
           {{ testResult }}
         </div>
@@ -120,6 +134,34 @@
           ❌ {{ testError }}
         </div>
       </div>
+
+      <!-- 选菜 popup -->
+      <van-popup v-model:show="showTestPicker" position="bottom" round :style="{ height: '70vh', display:'flex', flexDirection:'column' }">
+        <div style="padding:14px 16px 8px;font-size:15px;font-weight:700;color:#1c1c1e;flex-shrink:0;">选菜测试</div>
+        <van-tabs v-model:active="testCatIdx" color="#c96b7e" title-active-color="#c96b7e" style="flex-shrink:0;" @change="onTestCatChange">
+          <van-tab v-for="cat in testCategories" :key="cat.id" :title="cat.name" />
+        </van-tabs>
+        <div style="flex:1;overflow-y:auto;padding:8px 12px;">
+          <div v-if="testDishLoading" style="text-align:center;padding:30px;">
+            <van-loading color="#c96b7e" />
+          </div>
+          <div v-else v-for="dish in testDishes" :key="dish.id"
+            style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f2f2f7;"
+          >
+            <span style="font-size:14px;color:#1c1c1e;">{{ dish.name }}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button v-if="getTestQty(dish.id) > 0" class="qty-btn" @click="removeTestDish(dish.id)">−</button>
+              <span v-if="getTestQty(dish.id) > 0" style="font-size:14px;font-weight:600;color:#c96b7e;min-width:16px;text-align:center;">{{ getTestQty(dish.id) }}</span>
+              <button class="qty-btn" @click="addTestDish(dish)">＋</button>
+            </div>
+          </div>
+        </div>
+        <div style="padding:12px 16px;flex-shrink:0;">
+          <button class="btn-save" @click="showTestPicker = false" style="margin-top:0;">
+            确定（已选 {{ testCart.reduce((s,i)=>s+i.quantity,0) }} 份）
+          </button>
+        </div>
+      </van-popup>
     </template>
   </div>
 </template>
@@ -127,6 +169,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getAiConfig, updateAiConfig, getCalorieAdvice } from '../../../api/orderApi.js'
+import { getAdminCategories, getAdminDishes } from '../../../api/orderAdmin.js'
 import { showToast } from 'vant'
 
 const loading = ref(true)
@@ -134,6 +177,14 @@ const saving = ref(false)
 const testing = ref(false)
 const testResult = ref('')
 const testError = ref('')
+
+// test dish picker
+const showTestPicker = ref(false)
+const testCategories = ref([])
+const testDishes = ref([])
+const testCatIdx = ref(0)
+const testDishLoading = ref(false)
+const testCart = ref([])
 
 // 各 provider 对应的模型选项（与后端 application.yml allowed-models 保持一致）
 const MODEL_OPTIONS = {
@@ -178,7 +229,7 @@ function onToggleEnabled(val) {
 
 onMounted(async () => {
   try {
-    const config = await getAiConfig()
+    const [config, cats] = await Promise.all([getAiConfig(), getAdminCategories()])
     if (config) {
       form.value.enabled = config.enabled ?? '1'
       form.value.provider = config.provider ?? 'doubao'
@@ -187,12 +238,49 @@ onMounted(async () => {
       form.value.doubaoApiKey = config.doubaoApiKey ?? ''
       form.value.deepseekApiKey = config.deepseekApiKey ?? ''
     }
+    testCategories.value = cats || []
+    if (testCategories.value.length > 0) {
+      await loadTestDishes(testCategories.value[0].id)
+    }
   } catch (e) {
-    showToast({ message: '加载配置失败：' + e.message, type: 'fail' })
+    showToast({ message: '加载失败：' + e.message, type: 'fail' })
   } finally {
     loading.value = false
   }
 })
+
+async function loadTestDishes(categoryId) {
+  testDishLoading.value = true
+  try {
+    testDishes.value = (await getAdminDishes(categoryId) || []).filter(d => d.available !== false)
+  } catch {
+    testDishes.value = []
+  } finally {
+    testDishLoading.value = false
+  }
+}
+
+async function onTestCatChange(idx) {
+  const cat = testCategories.value[idx]
+  if (cat) await loadTestDishes(cat.id)
+}
+
+function getTestQty(dishId) {
+  return testCart.value.find(i => i.dishId === dishId)?.quantity || 0
+}
+
+function addTestDish(dish) {
+  const exist = testCart.value.find(i => i.dishId === dish.id)
+  if (exist) exist.quantity++
+  else testCart.value.push({ dishId: dish.id, dishName: dish.name, quantity: 1, remark: '' })
+}
+
+function removeTestDish(dishId) {
+  const idx = testCart.value.findIndex(i => i.dishId === dishId)
+  if (idx === -1) return
+  if (testCart.value[idx].quantity > 1) testCart.value[idx].quantity--
+  else testCart.value.splice(idx, 1)
+}
 
 async function save() {
   saving.value = true
@@ -207,14 +295,15 @@ async function save() {
 }
 
 async function testAi() {
+  if (testCart.value.length === 0) {
+    showToast('请先选择菜品')
+    return
+  }
   testing.value = true
   testResult.value = ''
   testError.value = ''
   try {
-    const result = await getCalorieAdvice([
-      { dishId: 0, dishName: '红烧肉', quantity: 1, remark: '' },
-      { dishId: 0, dishName: '白米饭', quantity: 1, remark: '' }
-    ])
+    const result = await getCalorieAdvice(testCart.value)
     if (result?.enabled === false) {
       testError.value = 'AI 功能当前处于关闭状态'
     } else {
@@ -294,5 +383,30 @@ async function testAi() {
 .btn-test:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-clear {
+  background: transparent;
+  color: #aeaeb2;
+  border: 1.5px solid #e5e5ea;
+  border-radius: 20px;
+  padding: 9px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid #c96b7e;
+  background: #fff;
+  color: #c96b7e;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
