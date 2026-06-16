@@ -49,19 +49,76 @@
         </div>
       </div>
 
-      <!-- 提示词 -->
+      <!-- 热量建议提示词 -->
       <div class="config-card">
-        <div class="config-label">系统提示词</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="config-label">热量建议提示词</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-chip" @click="copyPrompt(form.prompt)">复制</button>
+            <button class="btn-chip btn-chip-primary" @click="openPromptEditor('calorie')">展开编辑</button>
+          </div>
+        </div>
         <textarea
           v-model="form.prompt"
           placeholder="支持 {菜单} 占位符，会被替换为实际菜品列表"
           class="config-input"
-          style="margin-top:10px;height:140px;resize:vertical;line-height:1.6;font-size:13px;"
+          style="margin-top:10px;height:80px;resize:none;line-height:1.6;font-size:13px;"
+          readonly
+          @click="openPromptEditor('calorie')"
         />
         <div style="font-size:11px;color:#aeaeb2;margin-top:4px;">
-          提示：用 <code style="background:#f2f2f7;padding:1px 4px;border-radius:3px;color:#1c1c1e;">{菜单}</code> 表示菜品列表占位符，AI回复建议控制在80字以内
+          用 <code style="background:#f2f2f7;padding:1px 4px;border-radius:3px;color:#1c1c1e;">{菜单}</code> 表示菜品列表占位符，AI回复建议控制在80字以内
         </div>
       </div>
+
+      <!-- 菜品描述生成提示词 -->
+      <div class="config-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="config-label">菜品描述生成提示词</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-chip" @click="copyPrompt(form.dishDescPrompt || dishDescPromptPlaceholder)">复制</button>
+            <button class="btn-chip btn-chip-primary" @click="openPromptEditor('dishDesc')">展开编辑</button>
+          </div>
+        </div>
+        <textarea
+          v-model="form.dishDescPrompt"
+          :placeholder="dishDescPromptPlaceholder"
+          class="config-input"
+          style="margin-top:10px;height:80px;resize:none;line-height:1.6;font-size:13px;"
+          readonly
+          @click="openPromptEditor('dishDesc')"
+        />
+        <div style="font-size:11px;color:#aeaeb2;margin-top:4px;">
+          用 <code style="background:#f2f2f7;padding:1px 4px;border-radius:3px;color:#1c1c1e;">{菜名}</code> 表示菜品名称占位符，留空则使用内置默认，直接输出描述内容不要加任何前缀
+        </div>
+      </div>
+
+      <!-- 提示词全屏编辑 popup -->
+      <van-popup
+        v-model:show="showPromptEditor"
+        position="bottom"
+        round
+        :style="{ height: '85vh', display: 'flex', flexDirection: 'column' }"
+      >
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;flex-shrink:0;border-bottom:1px solid #f2f2f7;">
+          <span style="font-size:15px;font-weight:700;color:#1c1c1e;">{{ promptEditorTitle }}</span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-chip" @click="copyPrompt(promptEditorValue)">复制</button>
+            <button class="btn-chip" @click="promptEditorValue = ''">清空</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:12px 16px;">
+          <textarea
+            v-model="promptEditorValue"
+            :placeholder="promptEditorPlaceholder"
+            style="width:100%;height:100%;border:none;outline:none;font-size:14px;line-height:1.8;color:#1c1c1e;resize:none;font-family:inherit;box-sizing:border-box;background:transparent;overflow-y:auto;"
+          />
+        </div>
+        <div style="padding:12px 16px;flex-shrink:0;display:flex;gap:10px;border-top:1px solid #f2f2f7;">
+          <button class="btn-cancel-full" @click="showPromptEditor = false">取消</button>
+          <button class="btn-save-full" @click="savePromptEditor">保存</button>
+        </div>
+      </van-popup>
 
       <!-- API Keys -->
       <div class="config-card">
@@ -199,11 +256,55 @@ const MODEL_OPTIONS = {
   ],
 }
 
+const dishDescPromptPlaceholder = '帮我给菜品「{菜名}」写一句简短的中文介绍，要求：一句话，16字以内，口语化有食欲感，直接输出介绍内容不加引号'
+
+// 提示词全屏编辑器
+const showPromptEditor = ref(false)
+const promptEditorTarget = ref('')   // 'calorie' | 'dishDesc'
+const promptEditorValue = ref('')
+const promptEditorTitle = ref('')
+const promptEditorPlaceholder = ref('')
+
+function openPromptEditor(target) {
+  promptEditorTarget.value = target
+  if (target === 'calorie') {
+    promptEditorTitle.value = '热量建议提示词'
+    promptEditorValue.value = form.value.prompt
+    promptEditorPlaceholder.value = '支持 {菜单} 占位符，会被替换为实际菜品列表'
+  } else {
+    promptEditorTitle.value = '菜品描述生成提示词'
+    promptEditorValue.value = form.value.dishDescPrompt
+    promptEditorPlaceholder.value = dishDescPromptPlaceholder
+  }
+  showPromptEditor.value = true
+}
+
+function savePromptEditor() {
+  if (promptEditorTarget.value === 'calorie') {
+    form.value.prompt = promptEditorValue.value
+  } else {
+    form.value.dishDescPrompt = promptEditorValue.value
+  }
+  showPromptEditor.value = false
+  showToast({ message: '已保存到表单，记得点「保存配置」', type: 'success' })
+}
+
+async function copyPrompt(text) {
+  const content = text || ''
+  try {
+    await navigator.clipboard.writeText(content)
+    showToast({ message: '已复制', type: 'success' })
+  } catch {
+    showToast({ message: '复制失败，请手动选择', type: 'fail' })
+  }
+}
+
 const form = ref({
   enabled: '1',
   provider: 'doubao',
   model: 'doubao-seed-2-0-lite-260428',
   prompt: '',
+  dishDescPrompt: '',
   doubaoApiKey: '',
   deepseekApiKey: ''
 })
@@ -235,6 +336,7 @@ onMounted(async () => {
       form.value.provider = config.provider ?? 'doubao'
       form.value.model = config.model ?? 'doubao-seed-2-0-lite-260428'
       form.value.prompt = config.prompt ?? ''
+      form.value.dishDescPrompt = config.dishDescPrompt ?? ''
       form.value.doubaoApiKey = config.doubaoApiKey ?? ''
       form.value.deepseekApiKey = config.deepseekApiKey ?? ''
     }
@@ -408,5 +510,50 @@ async function testAi() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.btn-chip {
+  background: #f2f2f7;
+  color: #6d6d72;
+  border: none;
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-chip-primary {
+  background: #fef4f5;
+  color: #c96b7e;
+}
+
+.config-input[readonly] {
+  cursor: pointer;
+  color: #6d6d72;
+  background: #fafafa;
+}
+
+.btn-cancel-full {
+  flex: 1;
+  background: #f2f2f7;
+  color: #6d6d72;
+  border: none;
+  border-radius: 22px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-save-full {
+  flex: 2;
+  background: #c96b7e;
+  color: #fff;
+  border: none;
+  border-radius: 22px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
 }
 </style>
