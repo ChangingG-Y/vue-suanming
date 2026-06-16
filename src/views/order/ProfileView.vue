@@ -1,0 +1,859 @@
+<template>
+  <div class="profile-page">
+    <!-- Hero banner -->
+    <div class="hero-banner">
+      <div class="banner-bg"></div>
+      <div class="banner-deco d1"></div>
+      <div class="banner-deco d2"></div>
+      <div class="banner-deco d3"></div>
+      <div class="avatar-ring" @click="triggerAvatarUpload">
+        <img v-if="profile.avatarUrl" :src="profile.avatarUrl" class="avatar-img" />
+        <div v-else class="avatar-placeholder">{{ (profile.nickname || '?')[0] }}</div>
+        <div class="avatar-edit-badge">📷</div>
+      </div>
+      <input ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="onAvatarChange" />
+    </div>
+
+    <!-- Profile card -->
+    <div class="profile-card">
+      <div class="profile-name-row">
+        <span class="profile-name">{{ profile.nickname || '未设置昵称' }}</span>
+        <button class="edit-btn" @click="openEdit">编辑资料</button>
+      </div>
+      <div v-if="profile.bio" class="profile-bio">{{ profile.bio }}</div>
+      <div class="stats-row">
+        <div class="stat-pill">
+          <div class="stat-num">{{ profile.height ? profile.height : '—' }}</div>
+          <div class="stat-unit">cm · 身高</div>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat-pill clickable" @click="openWeightInput">
+          <div class="stat-num weight-num">{{ profile.currentWeight ? profile.currentWeight : profile.currentWeight === 0 ? '0' : '记录' }}</div>
+          <div class="stat-unit">
+            kg · 体重
+            <span v-if="profile.currentWeightDate" class="weight-since"> · {{ formatDateShort(profile.currentWeightDate) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weight trend -->
+    <div class="section-card">
+      <div class="section-header">
+        <span class="section-title">📈 体重趋势</span>
+        <span class="section-action" @click="openWeightInput">+ 今日记录</span>
+      </div>
+      <div v-if="weightRecords.length > 1" class="chart-wrap">
+        <svg class="weight-chart" :viewBox="`0 0 ${chartW} ${chartH}`" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#c96b7e" stop-opacity="0.28" />
+              <stop offset="100%" stop-color="#c96b7e" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line v-for="y in [padT, padT+(chartH-padT-padB)/2, chartH-padB]" :key="y" :x1="padL" :y1="y" :x2="chartW-padR" :y2="y" stroke="#f0f0f5" stroke-width="1" />
+          <path :d="chartAreaPath" fill="url(#wgrad)" />
+          <path :d="chartLinePath" fill="none" stroke="#c96b7e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          <circle v-for="(pt, i) in chartPoints" :key="i" :cx="pt.x" :cy="pt.y" r="4.5"
+            fill="#fff" stroke="#c96b7e" stroke-width="2.5" style="cursor:pointer" @click="tappedWeightIdx = tappedWeightIdx === i ? null : i" />
+          <template v-if="tappedWeightIdx !== null && chartPoints[tappedWeightIdx]">
+            <rect :x="clamp(chartPoints[tappedWeightIdx].x - 32, padL, chartW-padR-64)" :y="Math.max(chartPoints[tappedWeightIdx].y - 30, 2)" width="64" height="22" rx="7" fill="#c96b7e" />
+            <text :x="clamp(chartPoints[tappedWeightIdx].x, padL+32, chartW-padR-32)" :y="Math.max(chartPoints[tappedWeightIdx].y - 14, 16)" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">
+              {{ weightRecords[tappedWeightIdx].weight }} kg
+            </text>
+            <text :x="clamp(chartPoints[tappedWeightIdx].x, padL+32, chartW-padR-32)" :y="Math.max(chartPoints[tappedWeightIdx].y - 14, 16) + 10" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="8">
+            </text>
+          </template>
+        </svg>
+        <div class="chart-labels">
+          <span v-for="(r, i) in chartLabelRecords" :key="i">{{ formatDateShort(r.recordDate) }}</span>
+        </div>
+      </div>
+      <div v-else-if="weightRecords.length === 1" class="empty-chart">
+        <div class="solo-weight">{{ weightRecords[0].weight }}<span class="solo-unit"> kg</span></div>
+        <div class="solo-date">{{ formatDateShort(weightRecords[0].recordDate) }}</div>
+        <p class="empty-tip">再记一次就能看到趋势图啦 📉</p>
+      </div>
+      <div v-else class="empty-chart">
+        <div class="empty-icon">🌸</div>
+        <p class="empty-tip">还没有体重记录，点右上角开始吧</p>
+      </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="section-card">
+      <div class="section-header">
+        <span class="section-title">📅 生活日历</span>
+        <div class="month-nav">
+          <button class="month-btn" @click="changeMonth(-1)">‹</button>
+          <span class="month-label">{{ calYear }}年{{ calMonth }}月</span>
+          <button class="month-btn" @click="changeMonth(1)">›</button>
+        </div>
+      </div>
+      <div class="cal-legend">
+        <span class="legend-item"><span class="legend-emoji">{{ cfg.calEmojiCooking }}</span>做饭</span>
+        <span class="legend-item"><span class="legend-emoji">{{ cfg.calEmojiDining }}</span>下馆子</span>
+        <span class="legend-item"><span class="legend-emoji">{{ cfg.calEmojiDiary }}</span>日记</span>
+      </div>
+      <div class="calendar-grid">
+        <div class="cal-weekday" v-for="d in ['日','一','二','三','四','五','六']" :key="d">{{ d }}</div>
+        <div v-for="n in calStartBlank" :key="'b'+n" class="cal-cell-empty"></div>
+        <div
+          v-for="day in calendarDays" :key="day.date"
+          class="cal-cell"
+          :class="{
+            'active': day.hasOrder || day.hasVisit || day.hasDiary || day.weight != null,
+            'today': day.date === todayStr,
+            'selected': selectedCalDate === day.date
+          }"
+          @click="selectCalDay(day)"
+        >
+          <span class="cal-num" :class="{ 'today-num': day.date === todayStr }">{{ +day.date.split('-')[2] }}</span>
+          <div class="cal-emojis">
+            <span v-if="day.hasOrder">{{ cfg.calEmojiCooking }}</span>
+            <span v-if="day.hasVisit">{{ cfg.calEmojiDining }}</span>
+            <span v-if="day.hasDiary">{{ cfg.calEmojiDiary }}</span>
+          </div>
+          <span v-if="day.weight" class="cal-kg">{{ day.weight }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick-action bar (when day selected) -->
+    <transition name="slide-up">
+      <div v-if="selectedCalDate" class="quick-bar">
+        <span class="quick-date">{{ selectedCalDate }}</span>
+        <div class="quick-btns">
+          <button class="qb dining" @click="openVisitForm(selectedCalDate)">{{ cfg.calEmojiDining }}</button>
+          <button class="qb diary" @click="openDiaryForm(selectedCalDate)">{{ cfg.calEmojiDiary }}</button>
+          <button class="qb weight" @click="openWeightForDate(selectedCalDate)">⚖️</button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Weight list -->
+    <div v-if="weightRecords.length > 0" class="section-card">
+      <div class="section-header"><span class="section-title">⚖️ 近期记录</span></div>
+      <div class="weight-list">
+        <div v-for="r in [...weightRecords].reverse().slice(0,10)" :key="r.id" class="wt-row">
+          <div class="wt-left">
+            <span class="wt-date">{{ r.recordDate }}</span>
+            <span v-if="r.note" class="wt-note">{{ r.note }}</span>
+          </div>
+          <div class="wt-right">
+            <span class="wt-val">{{ r.weight }}<span class="wt-unit"> kg</span></span>
+            <button class="wt-del" @click="confirmDeleteWeight(r)">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Modals ===== -->
+
+    <!-- Edit profile -->
+    <van-popup v-model:show="showEditModal" round position="bottom" safe-area-inset-bottom>
+      <div class="sheet-handle"></div>
+      <div class="sheet-inner">
+        <div class="sheet-title">编辑资料</div>
+        <div class="form-field">
+          <div class="form-label">昵称</div>
+          <input v-model="editForm.nickname" class="form-input" placeholder="输入昵称" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">身高 (cm)</div>
+          <input v-model="editForm.height" class="form-input" type="number" placeholder="如 165" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">个人签名</div>
+          <textarea v-model="editForm.bio" class="form-textarea" placeholder="一句话介绍自己" rows="2"></textarea>
+        </div>
+        <div class="sheet-btns">
+          <button class="s-cancel" @click="showEditModal = false">取消</button>
+          <button class="s-confirm" :disabled="saving" @click="saveProfile">{{ saving ? '保存中…' : '保存' }}</button>
+        </div>
+      </div>
+    </van-popup>
+
+    <!-- Weight -->
+    <van-popup v-model:show="showWeightModal" round position="bottom" safe-area-inset-bottom>
+      <div class="sheet-handle"></div>
+      <div class="sheet-inner">
+        <div class="sheet-title">⚖️ 记录体重</div>
+        <div class="form-field">
+          <div class="form-label">日期</div>
+          <input v-model="weightForm.recordDate" class="form-input" type="date" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">体重 (kg)</div>
+          <input v-model="weightForm.weight" class="form-input" type="number" step="0.1" placeholder="如 58.5" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">备注 <span class="form-hint">选填</span></div>
+          <input v-model="weightForm.note" class="form-input" placeholder="今天感觉怎么样…" />
+        </div>
+        <div class="sheet-btns">
+          <button class="s-cancel" @click="showWeightModal = false">取消</button>
+          <button class="s-confirm" :disabled="savingWeight" @click="doSaveWeight">{{ savingWeight ? '记录中…' : '记录' }}</button>
+        </div>
+      </div>
+    </van-popup>
+
+    <!-- Restaurant visit -->
+    <van-popup v-model:show="showVisitModal" round position="bottom" safe-area-inset-bottom :style="{maxHeight:'90vh',overflowY:'auto'}">
+      <div class="sheet-handle"></div>
+      <div class="sheet-inner">
+        <div class="sheet-title">{{ cfg.calEmojiDining }} 下馆子记录</div>
+        <div class="form-field">
+          <div class="form-label">日期</div>
+          <input v-model="visitForm.visitDate" class="form-input" type="date" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">餐次</div>
+          <div class="seg-ctrl">
+            <button v-for="(n,i) in ['早饭','午饭','晚饭']" :key="i" class="seg-btn" :class="{ on: visitForm.mealType === i }" @click="visitForm.mealType = i">{{ n }}</button>
+          </div>
+        </div>
+        <div class="form-field">
+          <div class="form-label">餐厅名称</div>
+          <input v-model="visitForm.restaurantName" class="form-input" placeholder="叫什么名字呀" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">评分</div>
+          <div class="stars">
+            <span v-for="n in 5" :key="n" class="star" :class="{ lit: visitForm.score >= n }" @click="visitForm.score = n">★</span>
+          </div>
+        </div>
+        <div class="form-field">
+          <div class="form-label">点评 <span class="form-hint">选填</span></div>
+          <textarea v-model="visitForm.content" class="form-textarea" placeholder="好不好吃，环境怎么样…" rows="3"></textarea>
+        </div>
+        <div class="form-field">
+          <div class="form-label">照片 <span class="form-hint">最多 3 张</span></div>
+          <div class="photo-grid">
+            <div v-for="(p, i) in visitPhotoPreviews" :key="i" class="photo-slot">
+              <img :src="p" class="photo-img" />
+              <button class="photo-x" @click="removeVisitPhoto(i)">✕</button>
+            </div>
+            <button v-if="visitPhotoPreviews.length < 3" class="photo-add" @click="$refs.visitPhotoInput.click()">
+              <span class="photo-add-icon">+</span>
+            </button>
+          </div>
+          <input ref="visitPhotoInput" type="file" accept="image/*" style="display:none" @change="onVisitPhotoChange" />
+        </div>
+        <div class="sheet-btns">
+          <button class="s-cancel" @click="showVisitModal = false">取消</button>
+          <button class="s-confirm dining" :disabled="savingVisit" @click="doSaveVisit">{{ savingVisit ? '保存中…' : '保存记录' }}</button>
+        </div>
+      </div>
+    </van-popup>
+
+    <!-- Diary -->
+    <van-popup v-model:show="showDiaryModal" round position="bottom" safe-area-inset-bottom :style="{maxHeight:'90vh',overflowY:'auto'}">
+      <div class="sheet-handle"></div>
+      <div class="sheet-inner">
+        <div class="sheet-title">{{ cfg.calEmojiDiary }} 写日记</div>
+        <div class="form-field">
+          <div class="form-label">日期</div>
+          <input v-model="diaryForm.diaryDate" class="form-input" type="date" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">今天的故事</div>
+          <textarea v-model="diaryForm.content" class="form-textarea diary-ta" placeholder="今天发生了什么有趣的事…" rows="7"></textarea>
+        </div>
+        <div class="form-field">
+          <div class="form-label">照片 <span class="form-hint">最多 3 张</span></div>
+          <div class="photo-grid">
+            <div v-for="(p, i) in diaryPhotoPreviews" :key="i" class="photo-slot">
+              <img :src="p" class="photo-img" />
+              <button class="photo-x" @click="removeDiaryPhoto(i)">✕</button>
+            </div>
+            <button v-if="diaryPhotoPreviews.length < 3" class="photo-add" @click="$refs.diaryPhotoInput.click()">
+              <span class="photo-add-icon">+</span>
+            </button>
+          </div>
+          <input ref="diaryPhotoInput" type="file" accept="image/*" style="display:none" @change="onDiaryPhotoChange" />
+        </div>
+        <div class="sheet-btns">
+          <button class="s-cancel" @click="showDiaryModal = false">取消</button>
+          <button class="s-confirm diary-btn" :disabled="savingDiary" @click="doSaveDiary">{{ savingDiary ? '保存中…' : '保存日记' }}</button>
+        </div>
+      </div>
+    </van-popup>
+
+    <!-- Day detail -->
+    <van-popup v-model:show="showDayDetail" round position="bottom" safe-area-inset-bottom :style="{maxHeight:'92vh',overflowY:'auto'}">
+      <div v-if="dayDetail" class="sheet-inner">
+        <div class="detail-header">
+          <div class="detail-date">{{ formatDayLabel(dayDetail.date) }}</div>
+          <button class="detail-close" @click="showDayDetail = false">✕</button>
+        </div>
+
+        <div v-if="dayDetail.weight" class="detail-weight-pill">
+          ⚖️ <strong>{{ dayDetail.weight }} kg</strong>
+          <span v-if="dayDetail.weightNote" class="detail-weight-note">· {{ dayDetail.weightNote }}</span>
+        </div>
+
+        <template v-if="dayDetail.orders?.length">
+          <div class="detail-section-label">{{ cfg.calEmojiCooking }} 做饭</div>
+          <div v-for="order in dayDetail.orders" :key="order.id" class="order-block">
+            <div class="order-block-head">
+              <span class="ob-meal">{{ order.mealTypeName }}</span>
+              <span class="ob-state" :class="'st'+order.state">{{ getStateName(order.state) }}</span>
+            </div>
+            <div class="ob-items">
+              <span v-for="item in order.items" :key="item.dishName" class="ob-chip">{{ item.dishName }} ×{{ item.qty }}</span>
+            </div>
+            <div v-if="order.remark" class="ob-remark">📝 {{ order.remark }}</div>
+            <div v-if="order.review" class="ob-review">
+              <div class="rev-stars">{{ '★'.repeat(order.review.score) }}<span class="rev-empty-stars">{{ '★'.repeat(5-order.review.score) }}</span></div>
+              <div v-if="order.review.content" class="rev-text">"{{ order.review.content }}"</div>
+              <div v-if="order.review.images?.length" class="rev-imgs">
+                <img v-for="(img,i) in order.review.images" :key="i" :src="img" class="rev-thumb" @click="previewImg(order.review.images, i)" />
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template v-if="dayDetail.visits?.length">
+          <div class="detail-section-label">{{ cfg.calEmojiDining }} 下馆子</div>
+          <div v-for="v in dayDetail.visits" :key="v.id" class="visit-block">
+            <div class="vb-head">
+              <span class="vb-meal">{{ getMealTypeName(v.mealType) }}</span>
+              <span class="vb-name">{{ v.restaurantName }}</span>
+              <span v-if="v.score" class="vb-score">{{ '★'.repeat(Math.round(v.score)) }}</span>
+              <button class="vb-del" @click="confirmDeleteVisit(v, dayDetail.date)">✕</button>
+            </div>
+            <div v-if="v.content" class="vb-text">"{{ v.content }}"</div>
+            <div v-if="v.imageUrls?.length" class="rev-imgs">
+              <img v-for="(img,i) in v.imageUrls" :key="i" :src="img" class="rev-thumb" @click="previewImg(v.imageUrls, i)" />
+            </div>
+          </div>
+          <button class="more-btn" @click="openVisitForm(dayDetail.date)">+ 再添一条</button>
+        </template>
+
+        <template v-if="dayDetail.diary">
+          <div class="detail-section-label">{{ cfg.calEmojiDiary }} 日记</div>
+          <div class="diary-block">
+            <p class="diary-text">{{ dayDetail.diary.content }}</p>
+            <div v-if="dayDetail.diary.imageUrls?.length" class="rev-imgs" style="margin-top:8px">
+              <img v-for="(img,i) in dayDetail.diary.imageUrls" :key="i" :src="img" class="rev-thumb" @click="previewImg(dayDetail.diary.imageUrls, i)" />
+            </div>
+            <div class="diary-actions">
+              <button class="da-btn" @click="editDiary(dayDetail)">✏️ 编辑</button>
+              <button class="da-btn del" @click="confirmDeleteDiary(dayDetail.diary, dayDetail.date)">🗑 删除</button>
+            </div>
+          </div>
+        </template>
+
+        <div v-if="!dayDetail.orders?.length && !dayDetail.visits?.length && !dayDetail.diary && !dayDetail.weight" class="detail-empty">这天还没有记录</div>
+
+        <div class="detail-add-row">
+          <button class="dab dining" @click="openVisitForm(dayDetail.date); showDayDetail = false">{{ cfg.calEmojiDining }}<br><span>下馆子</span></button>
+          <button class="dab diary" @click="openDiaryForm(dayDetail.date); showDayDetail = false">{{ cfg.calEmojiDiary }}<br><span>日记</span></button>
+          <button class="dab weight" @click="openWeightForDate(dayDetail.date); showDayDetail = false">⚖️<br><span>体重</span></button>
+        </div>
+      </div>
+    </van-popup>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { showImagePreview, showToast, showConfirmDialog } from 'vant'
+import { useLayoutConfigStore } from '../../stores/layoutConfig.js'
+import {
+  getMyProfile, updateMyProfile, uploadAvatar,
+  getWeightRecords, saveWeight, deleteWeight,
+  getCalendar, getDayDetail
+} from '../../api/orderProfile.js'
+import { saveVisit, deleteVisit, saveDiary, deleteDiary, uploadLifePhoto } from '../../api/orderLifeRecord.js'
+import { prepareLifePhoto } from '../../utils/imageUtils.js'
+
+const layoutStore = useLayoutConfigStore()
+const cfg = computed(() => layoutStore.config)
+
+const profile = ref({ nickname: '', avatarUrl: '', height: null, bio: '', currentWeight: null, currentWeightDate: null })
+const weightRecords = ref([])
+const calendarDays = ref([])
+const calYear = ref(new Date().getFullYear())
+const calMonth = ref(new Date().getMonth() + 1)
+const todayStr = new Date().toISOString().split('T')[0]
+
+const showEditModal = ref(false)
+const showWeightModal = ref(false)
+const showVisitModal = ref(false)
+const showDiaryModal = ref(false)
+const showDayDetail = ref(false)
+const saving = ref(false)
+const savingWeight = ref(false)
+const savingVisit = ref(false)
+const savingDiary = ref(false)
+const avatarInputRef = ref(null)
+const visitPhotoInput = ref(null)
+const diaryPhotoInput = ref(null)
+const tappedWeightIdx = ref(null)
+const selectedCalDate = ref(null)
+const dayDetail = ref(null)
+
+const editForm = ref({ nickname: '', height: '', bio: '' })
+const weightForm = ref({ recordDate: todayStr, weight: '', note: '' })
+const visitForm = ref({ visitDate: todayStr, mealType: 1, restaurantName: '', score: 5, content: '' })
+const diaryForm = ref({ diaryDate: todayStr, content: '' })
+const visitPhotoStage = ref([])
+const diaryPhotoStage = ref([])
+const visitPhotoPreviews = computed(() => visitPhotoStage.value.map(p => p.previewUrl))
+const diaryPhotoPreviews = computed(() => diaryPhotoStage.value.map(p => p.previewUrl))
+
+const chartW = 320, chartH = 100, padL = 10, padR = 10, padT = 22, padB = 10
+const chartPoints = computed(() => {
+  if (weightRecords.value.length < 2) return []
+  const vals = weightRecords.value.map(r => parseFloat(r.weight))
+  const minV = Math.min(...vals), maxV = Math.max(...vals), range = maxV - minV || 1
+  return vals.map((v, i) => ({
+    x: padL + (i / (vals.length - 1)) * (chartW - padL - padR),
+    y: padT + (1 - (v - minV) / range) * (chartH - padT - padB)
+  }))
+})
+const chartLinePath = computed(() => chartPoints.value.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '))
+const chartAreaPath = computed(() => {
+  const pts = chartPoints.value
+  if (!pts.length) return ''
+  const bot = chartH - padB
+  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ` L${pts[pts.length-1].x},${bot} L${pts[0].x},${bot} Z`
+})
+const chartLabelRecords = computed(() => {
+  const n = weightRecords.value.length
+  if (n <= 4) return weightRecords.value
+  return [0, Math.floor(n / 3), Math.floor(2 * n / 3), n - 1].map(i => weightRecords.value[i])
+})
+const calStartBlank = computed(() => new Date(calYear.value, calMonth.value - 1, 1).getDay())
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
+
+async function loadProfile() { try { profile.value = await getMyProfile() } catch {} }
+async function loadWeights() { try { weightRecords.value = await getWeightRecords(90) } catch {} }
+async function loadCalendar() { try { calendarDays.value = await getCalendar(calYear.value, calMonth.value) } catch {} }
+
+onMounted(() => { loadProfile(); loadWeights(); loadCalendar() })
+
+function formatDateShort(d) {
+  if (!d) return ''
+  const [, m, day] = d.split('-')
+  return `${+m}月${+day}日`
+}
+function formatDayLabel(d) {
+  if (!d) return ''
+  const [y, m, day] = d.split('-')
+  const wd = ['日','一','二','三','四','五','六'][new Date(d).getDay()]
+  return `${y}年${+m}月${+day}日 星期${wd}`
+}
+function getMealTypeName(t) { return ['早饭','午饭','晚饭'][t] ?? '其他' }
+function getStateName(s) { return { 0:'待接单', 1:'已接单', 2:'已完成', 3:'已取消' }[s] ?? '' }
+
+function changeMonth(delta) {
+  let m = calMonth.value + delta, y = calYear.value
+  if (m < 1) { m = 12; y-- }
+  if (m > 12) { m = 1; y++ }
+  calMonth.value = m; calYear.value = y; loadCalendar()
+}
+
+async function selectCalDay(day) {
+  selectedCalDate.value = day.date
+  const hasData = day.hasOrder || day.hasVisit || day.hasDiary || day.weight != null
+  if (!hasData) return
+  try { dayDetail.value = await getDayDetail(day.date); showDayDetail.value = true } catch (e) { showToast(e.message) }
+}
+
+function openWeightInput() { weightForm.value = { recordDate: todayStr, weight: '', note: '' }; showWeightModal.value = true }
+function openWeightForDate(d) { weightForm.value = { recordDate: d, weight: '', note: '' }; showWeightModal.value = true }
+
+async function doSaveWeight() {
+  if (!weightForm.value.weight) { showToast('请输入体重'); return }
+  savingWeight.value = true
+  try {
+    await saveWeight({ recordDate: weightForm.value.recordDate, weight: parseFloat(weightForm.value.weight), note: weightForm.value.note || null })
+    showWeightModal.value = false; showToast('记录成功 ✓')
+    await Promise.all([loadWeights(), loadProfile(), loadCalendar()])
+  } catch (e) { showToast(e.message) } finally { savingWeight.value = false }
+}
+
+async function confirmDeleteWeight(r) {
+  try {
+    await showConfirmDialog({ title: '删除体重记录', message: `确认删除 ${r.recordDate} 的 ${r.weight}kg？` })
+    await deleteWeight(r.id); showToast('已删除')
+    await Promise.all([loadWeights(), loadProfile(), loadCalendar()])
+  } catch {}
+}
+
+function triggerAvatarUpload() { avatarInputRef.value?.click() }
+async function onAvatarChange(e) {
+  const file = e.target.files?.[0]; if (!file) return
+  const resized = await resizeTo800(file)
+  const fd = new FormData(); fd.append('file', resized, 'avatar.jpg')
+  try {
+    const url = await uploadAvatar(fd)
+    profile.value.avatarUrl = url + '?t=' + Date.now(); showToast('头像已更新 ✓')
+  } catch (err) { showToast(err.message) }
+  e.target.value = ''
+}
+function resizeTo800(file) {
+  return new Promise(resolve => {
+    const img = new Image(), url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const s = Math.min(img.width, img.height), canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 800
+      canvas.getContext('2d').drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, 800, 800)
+      canvas.toBlob(resolve, 'image/jpeg', 0.9)
+    }; img.src = url
+  })
+}
+
+function openEdit() {
+  editForm.value = { nickname: profile.value.nickname || '', height: profile.value.height || '', bio: profile.value.bio || '' }
+  showEditModal.value = true
+}
+async function saveProfile() {
+  saving.value = true
+  try {
+    await updateMyProfile({ nickname: editForm.value.nickname || null, height: editForm.value.height ? parseFloat(editForm.value.height) : null, bio: editForm.value.bio || null })
+    showEditModal.value = false; showToast('保存成功 ✓'); await loadProfile()
+  } catch (e) { showToast(e.message) } finally { saving.value = false }
+}
+
+function openVisitForm(date) {
+  visitForm.value = { visitDate: date || todayStr, mealType: 1, restaurantName: '', score: 5, content: '' }
+  visitPhotoStage.value = []; showVisitModal.value = true
+}
+async function onVisitPhotoChange(e) {
+  const file = e.target.files?.[0]; if (!file || visitPhotoStage.value.length >= 3) return
+  const processed = await prepareLifePhoto(file)
+  visitPhotoStage.value.push({ file: processed, previewUrl: URL.createObjectURL(processed) })
+  e.target.value = ''
+}
+function removeVisitPhoto(i) { URL.revokeObjectURL(visitPhotoStage.value[i].previewUrl); visitPhotoStage.value.splice(i, 1) }
+async function doSaveVisit() {
+  if (!visitForm.value.restaurantName) { showToast('请输入餐厅名称'); return }
+  savingVisit.value = true
+  try {
+    const fileIds = []
+    for (const s of visitPhotoStage.value) { const r = await uploadLifePhoto(s.file); fileIds.push(r.id) }
+    await saveVisit({ ...visitForm.value, fileIds })
+    showVisitModal.value = false; showToast('记录成功 ✓'); await loadCalendar()
+  } catch (e) { showToast(e.message) } finally { savingVisit.value = false }
+}
+async function confirmDeleteVisit(v, date) {
+  try {
+    await showConfirmDialog({ title: '删除下馆子记录', message: `确认删除「${v.restaurantName}」？` })
+    await deleteVisit(v.id); showToast('已删除')
+    dayDetail.value = await getDayDetail(date); await loadCalendar()
+  } catch {}
+}
+
+function openDiaryForm(date) {
+  diaryForm.value = { diaryDate: date || todayStr, content: '' }
+  diaryPhotoStage.value = []; showDiaryModal.value = true
+}
+function editDiary(detail) {
+  diaryForm.value = { diaryDate: detail.date, content: detail.diary.content || '' }
+  diaryPhotoStage.value = []; showDayDetail.value = false; showDiaryModal.value = true
+}
+async function onDiaryPhotoChange(e) {
+  const file = e.target.files?.[0]; if (!file || diaryPhotoStage.value.length >= 3) return
+  const processed = await prepareLifePhoto(file)
+  diaryPhotoStage.value.push({ file: processed, previewUrl: URL.createObjectURL(processed) })
+  e.target.value = ''
+}
+function removeDiaryPhoto(i) { URL.revokeObjectURL(diaryPhotoStage.value[i].previewUrl); diaryPhotoStage.value.splice(i, 1) }
+async function doSaveDiary() {
+  if (!diaryForm.value.content && diaryPhotoStage.value.length === 0) { showToast('请写点内容或添加图片'); return }
+  savingDiary.value = true
+  try {
+    const fileIds = []
+    for (const s of diaryPhotoStage.value) { const r = await uploadLifePhoto(s.file); fileIds.push(r.id) }
+    await saveDiary({ ...diaryForm.value, fileIds })
+    showDiaryModal.value = false; showToast('日记已保存 ✓'); await loadCalendar()
+  } catch (e) { showToast(e.message) } finally { savingDiary.value = false }
+}
+async function confirmDeleteDiary(diary, date) {
+  try {
+    await showConfirmDialog({ title: '删除日记', message: '确认删除这篇日记？' })
+    await deleteDiary(diary.id); showToast('已删除')
+    dayDetail.value = await getDayDetail(date); await loadCalendar()
+  } catch {}
+}
+
+function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition: idx }) }
+</script>
+
+<style scoped>
+/* ─── Page ─────────────────────────────────── */
+.profile-page { min-height: 100vh; background: #f2f2f7; padding-bottom: 100px; }
+
+/* ─── Hero banner ───────────────────────────── */
+.hero-banner {
+  position: relative; height: 150px; overflow: hidden;
+  background: linear-gradient(135deg, #e8a0b0 0%, #c96b7e 55%, #a84d65 100%);
+}
+.banner-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 30% 60%, rgba(255,255,255,0.12) 0%, transparent 60%);
+}
+.banner-deco {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+}
+.d1 { width: 120px; height: 120px; top: -30px; right: -20px; }
+.d2 { width: 80px; height: 80px; top: 20px; right: 60px; background: rgba(255,255,255,0.06); }
+.d3 { width: 60px; height: 60px; bottom: -10px; left: 40px; }
+.avatar-ring {
+  position: absolute; bottom: -36px; left: 20px;
+  width: 88px; height: 88px; border-radius: 50%;
+  box-shadow: 0 0 0 4px #fff, 0 4px 20px rgba(201,107,126,0.35);
+  cursor: pointer; overflow: hidden;
+}
+.avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-placeholder {
+  width: 100%; height: 100%; border-radius: 50%;
+  background: linear-gradient(135deg, #d97a90, #c96b7e);
+  color: #fff; font-size: 32px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.avatar-edit-badge {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; opacity: 0; transition: opacity 0.2s;
+}
+.avatar-ring:active .avatar-edit-badge { opacity: 1; }
+
+/* ─── Profile card ──────────────────────────── */
+.profile-card {
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: 0 0 20px 20px;
+  padding: 48px 16px 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.profile-name { font-size: 20px; font-weight: 800; color: #1c1c1e; }
+.edit-btn {
+  background: #fef4f5; border: 1.5px solid rgba(201,107,126,0.25);
+  color: #c96b7e; border-radius: 20px; padding: 5px 14px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.edit-btn:active { background: #ffe4ea; }
+.profile-bio { font-size: 13px; color: #6d6d72; line-height: 1.5; margin-bottom: 12px; }
+.stats-row { display: flex; align-items: center; margin-top: 10px; }
+.stat-pill { flex: 1; text-align: center; }
+.stat-pill.clickable { cursor: pointer; }
+.stat-num { font-size: 22px; font-weight: 800; color: #1c1c1e; line-height: 1.2; }
+.weight-num { color: #c96b7e; }
+.stat-unit { font-size: 11px; color: #aeaeb2; margin-top: 2px; }
+.weight-since { font-size: 10px; color: #c8c8cc; }
+.stat-sep { width: 1px; height: 36px; background: #e5e5ea; margin: 0 12px; flex-shrink: 0; }
+
+/* ─── Sections ──────────────────────────────── */
+.section-card {
+  background: #fff; margin: 0 12px 12px; border-radius: 20px;
+  padding: 14px 14px 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-title { font-size: 15px; font-weight: 700; color: #1c1c1e; }
+.section-action { font-size: 13px; color: #c96b7e; font-weight: 700; cursor: pointer; }
+
+/* ─── Chart ─────────────────────────────────── */
+.chart-wrap { width: 100%; }
+.weight-chart { width: 100%; height: 100px; display: block; }
+.chart-labels { display: flex; justify-content: space-between; font-size: 10px; color: #c8c8cc; margin-top: 4px; padding: 0 6px; }
+.empty-chart { text-align: center; padding: 12px 0 4px; }
+.empty-icon { font-size: 32px; margin-bottom: 4px; }
+.solo-weight { font-size: 38px; font-weight: 800; color: #c96b7e; line-height: 1.1; }
+.solo-unit { font-size: 18px; font-weight: 500; }
+.solo-date { font-size: 12px; color: #aeaeb2; margin-top: 2px; }
+.empty-tip { font-size: 13px; color: #aeaeb2; margin-top: 6px; }
+
+/* ─── Calendar ──────────────────────────────── */
+.cal-legend { display: flex; gap: 16px; margin-bottom: 12px; }
+.legend-item { font-size: 12px; color: #6d6d72; display: flex; align-items: center; gap: 4px; }
+.legend-emoji { font-size: 14px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-weekday { text-align: center; font-size: 11px; color: #aeaeb2; font-weight: 600; padding: 4px 0 6px; }
+.cal-cell-empty { min-height: 58px; }
+.cal-cell {
+  min-height: 58px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 5px 2px 4px; cursor: pointer;
+  transition: background 0.12s, transform 0.1s;
+}
+.cal-cell.active { background: rgba(201,107,126,0.07); }
+.cal-cell.today { background: rgba(201,107,126,0.05); }
+.cal-cell.selected { background: #ffe0e8; box-shadow: 0 0 0 1.5px #c96b7e inset; }
+.cal-cell:active { transform: scale(0.93); }
+.cal-num { font-size: 13px; color: #3a3a3c; font-weight: 500; line-height: 1.3; }
+.today-num {
+  background: #c96b7e; color: #fff;
+  border-radius: 50%; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; line-height: 1;
+}
+.cal-emojis { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; margin-top: 2px; min-height: 14px; font-size: 10px; line-height: 1.2; }
+.cal-kg { font-size: 8.5px; color: #c96b7e; font-weight: 700; background: #fef4f5; border-radius: 4px; padding: 1px 3px; margin-top: 2px; }
+.month-nav { display: flex; align-items: center; gap: 4px; }
+.month-btn { background: none; border: none; font-size: 22px; color: #c96b7e; cursor: pointer; padding: 0 4px; line-height: 1; }
+.month-label { font-size: 13px; font-weight: 600; color: #1c1c1e; min-width: 72px; text-align: center; }
+
+/* ─── Quick bar ─────────────────────────────── */
+.quick-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; margin: 0 12px 12px; border-radius: 16px;
+  padding: 10px 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+.quick-date { font-size: 12px; color: #aeaeb2; }
+.quick-btns { display: flex; gap: 8px; }
+.qb { border: none; border-radius: 12px; padding: 8px 12px; font-size: 16px; cursor: pointer; }
+.qb.dining { background: #fff8ed; }
+.qb.diary { background: #eff6ff; }
+.qb.weight { background: #f0fdf4; }
+.qb:active { opacity: 0.7; transform: scale(0.9); }
+.slide-up-enter-active { transition: all 0.2s ease; }
+.slide-up-enter-from { opacity: 0; transform: translateY(10px); }
+
+/* ─── Weight list ───────────────────────────── */
+.weight-list { display: flex; flex-direction: column; gap: 6px; }
+.wt-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; background: #f9f9fb; border-radius: 12px;
+}
+.wt-left { display: flex; flex-direction: column; gap: 2px; }
+.wt-date { font-size: 13px; color: #3a3a3c; font-weight: 500; }
+.wt-note { font-size: 11px; color: #aeaeb2; }
+.wt-right { display: flex; align-items: center; gap: 10px; }
+.wt-val { font-size: 18px; font-weight: 800; color: #c96b7e; }
+.wt-unit { font-size: 12px; font-weight: 500; }
+.wt-del { background: none; border: none; color: #c8c8cc; font-size: 14px; cursor: pointer; padding: 2px 4px; }
+.wt-del:active { color: #ff3b30; }
+
+/* ─── Sheets / Modals ───────────────────────── */
+.sheet-handle {
+  width: 36px; height: 4px; background: #e5e5ea; border-radius: 2px;
+  margin: 10px auto 0;
+}
+.sheet-inner { padding: 16px 16px 24px; }
+.sheet-title { font-size: 18px; font-weight: 800; color: #1c1c1e; margin-bottom: 20px; }
+.form-field { margin-bottom: 16px; }
+.form-label { font-size: 11px; font-weight: 700; color: #aeaeb2; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
+.form-hint { font-size: 10px; color: #c8c8cc; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.form-input {
+  width: 100%; padding: 13px 14px; border-radius: 13px; border: none;
+  background: #f7f7f9; font-size: 15px; outline: none; color: #1c1c1e; box-sizing: border-box;
+  transition: box-shadow 0.15s, background 0.15s;
+}
+.form-input:focus { background: #fff; box-shadow: 0 0 0 2px #c96b7e; }
+.form-textarea {
+  width: 100%; padding: 13px 14px; border-radius: 13px; border: none;
+  background: #f7f7f9; font-size: 15px; outline: none; color: #1c1c1e; box-sizing: border-box;
+  resize: none; font-family: inherit; line-height: 1.5;
+  transition: box-shadow 0.15s, background 0.15s;
+}
+.form-textarea:focus { background: #fff; box-shadow: 0 0 0 2px #c96b7e; }
+.diary-ta { min-height: 140px; }
+.sheet-btns { display: flex; gap: 10px; margin-top: 20px; }
+.s-cancel { flex: 1; padding: 14px; background: #f2f2f7; border: none; border-radius: 14px; font-size: 15px; font-weight: 600; color: #6d6d72; cursor: pointer; }
+.s-cancel:active { background: #e5e5ea; }
+.s-confirm { flex: 2; padding: 14px; background: #c96b7e; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(201,107,126,0.32); }
+.s-confirm.dining { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 14px rgba(217,119,6,0.28); }
+.s-confirm.diary-btn { background: linear-gradient(135deg, #60a5fa, #3b82f6); box-shadow: 0 4px 14px rgba(59,130,246,0.28); }
+.s-confirm:disabled { opacity: 0.5; }
+.s-confirm:active { opacity: 0.85; }
+
+/* meal type */
+.seg-ctrl { display: flex; background: #f2f2f7; border-radius: 12px; padding: 3px; gap: 3px; }
+.seg-btn { flex: 1; padding: 8px; border: none; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 600; color: #6d6d72; cursor: pointer; transition: all 0.15s; }
+.seg-btn.on { background: #fff; color: #c96b7e; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+/* stars */
+.stars { display: flex; gap: 6px; }
+.star { font-size: 28px; color: #e5e5ea; cursor: pointer; transition: color 0.1s, transform 0.1s; line-height: 1; }
+.star.lit { color: #f59e0b; }
+.star:active { transform: scale(1.2); }
+
+/* photos */
+.photo-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.photo-slot { position: relative; width: 80px; height: 80px; border-radius: 12px; overflow: visible; }
+.photo-img { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; }
+.photo-x {
+  position: absolute; top: -7px; right: -7px;
+  width: 22px; height: 22px; background: #ff3b30; color: #fff;
+  border: none; border-radius: 50%; font-size: 11px; cursor: pointer; line-height: 22px; text-align: center; padding: 0;
+}
+.photo-add {
+  width: 80px; height: 80px; border: 2px dashed #d1d1d6; border-radius: 12px;
+  background: #f9f9fb; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.photo-add-icon { font-size: 30px; color: #c8c8cc; line-height: 1; }
+.photo-add:active { background: #f2f2f7; }
+
+/* ─── Day detail ─────────────────────────────── */
+.detail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0 16px;
+}
+.detail-date { font-size: 16px; font-weight: 700; color: #1c1c1e; }
+.detail-close { background: #f2f2f7; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 13px; cursor: pointer; color: #6d6d72; }
+.detail-weight-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: linear-gradient(135deg, #fff0f3, #ffe4ea);
+  color: #c96b7e; border-radius: 20px; padding: 6px 14px;
+  font-size: 13px; margin-bottom: 14px;
+}
+.detail-weight-note { color: #d49ea8; font-size: 12px; }
+.detail-section-label { font-size: 12px; font-weight: 800; color: #aeaeb2; text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 8px; }
+.detail-empty { text-align: center; color: #c8c8cc; font-size: 14px; padding: 24px 0; }
+
+.order-block { background: #f9f9fb; border-radius: 16px; padding: 12px; margin-bottom: 8px; }
+.order-block-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.ob-meal { font-size: 12px; font-weight: 700; background: #fef4f5; color: #c96b7e; border-radius: 8px; padding: 3px 9px; }
+.ob-state { font-size: 11px; color: #aeaeb2; }
+.st2 { color: #34c759; }
+.st3 { color: #ff3b30; }
+.ob-items { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.ob-chip { font-size: 12px; background: #fff; border: 1px solid #e5e5ea; border-radius: 8px; padding: 3px 8px; color: #3a3a3c; }
+.ob-remark { font-size: 12px; color: #6d6d72; margin-top: 4px; }
+.ob-review { border-top: 1px solid #f0f0f5; margin-top: 10px; padding-top: 10px; }
+.rev-stars { font-size: 16px; color: #f59e0b; margin-bottom: 4px; }
+.rev-empty-stars { color: #e5e5ea; }
+.rev-text { font-size: 13px; color: #6d6d72; font-style: italic; margin-bottom: 6px; line-height: 1.5; }
+.rev-imgs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.rev-thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; cursor: pointer; }
+
+.visit-block { background: linear-gradient(135deg, #fff8ed, #fffbf0); border-radius: 16px; padding: 12px; margin-bottom: 8px; }
+.vb-head { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.vb-meal { font-size: 11px; font-weight: 700; background: #fef3c7; color: #d97706; border-radius: 7px; padding: 2px 8px; }
+.vb-name { font-size: 14px; font-weight: 700; color: #1c1c1e; flex: 1; }
+.vb-score { font-size: 13px; color: #f59e0b; }
+.vb-del { background: none; border: none; color: #d1d1d6; font-size: 13px; cursor: pointer; padding: 2px 4px; }
+.vb-del:active { color: #ff3b30; }
+.vb-text { font-size: 13px; color: #6d6d72; font-style: italic; margin-bottom: 6px; line-height: 1.5; }
+
+.diary-block { background: linear-gradient(135deg, #eff6ff, #f0f8ff); border-radius: 16px; padding: 14px; margin-bottom: 8px; }
+.diary-text { font-size: 14px; color: #1c1c1e; line-height: 1.7; white-space: pre-wrap; margin: 0; }
+.diary-actions { display: flex; gap: 8px; margin-top: 10px; }
+.da-btn { background: #fff; border: none; border-radius: 10px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #3b82f6; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.da-btn.del { color: #ff3b30; }
+
+.more-btn { background: none; border: 1.5px dashed #f59e0b; color: #d97706; border-radius: 10px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; margin: 2px 0 6px; }
+
+.detail-add-row { display: flex; gap: 10px; margin-top: 20px; }
+.dab {
+  flex: 1; padding: 12px 4px 10px; border: none; border-radius: 16px;
+  cursor: pointer; font-size: 18px; font-weight: 700;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.dab span { font-size: 11px; font-weight: 600; }
+.dab.dining { background: #fff8ed; color: #d97706; }
+.dab.diary { background: #eff6ff; color: #3b82f6; }
+.dab.weight { background: #f0fdf4; color: #16a34a; }
+.dab:active { opacity: 0.7; transform: scale(0.95); }
+</style>

@@ -20,6 +20,12 @@
         </template>
         {{ cfg.tab2Label }}
       </van-tabbar-item>
+      <van-tabbar-item @click="$router.push('/order/profile')">
+        <template #icon>
+          <span class="tab-icon" :class="{ 'tab-active': active === 3 }">🙋</span>
+        </template>
+        我的
+      </van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -40,6 +46,7 @@ watch(() => route.path, p => {
   if (p.includes('/menu')) active.value = 0
   else if (p.includes('/orders') && !p.includes('history')) active.value = 1
   else if (p.includes('/history')) active.value = 2
+  else if (p.includes('/profile')) active.value = 3
 }, { immediate: true })
 
 onMounted(async () => {

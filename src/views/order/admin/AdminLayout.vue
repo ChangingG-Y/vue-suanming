@@ -14,6 +14,7 @@
       <van-tabbar-item icon="apps-o" @click="$router.push('/order/admin/categories')">分类管理</van-tabbar-item>
       <van-tabbar-item icon="setting-o" @click="$router.push('/order/admin/ai-config')">AI配置</van-tabbar-item>
       <van-tabbar-item icon="edit" @click="$router.push('/order/admin/layout-config')">布局编辑</van-tabbar-item>
+      <van-tabbar-item icon="user-o" @click="$router.push('/order/admin/profile')">我的</van-tabbar-item>
       <van-tabbar-item v-if="isSuperAdmin" icon="manager-o" @click="$router.push('/order/admin/super')">超管</van-tabbar-item>
     </van-tabbar>
   </div>
@@ -43,7 +44,8 @@ function doLogout() {
 }
 
 watch(() => route.path, p => {
-  if (p.includes('/super')) active.value = 5
+  if (p.includes('/super')) active.value = 6
+  else if (p.includes('/profile')) active.value = 5
   else if (p.includes('/layout-config')) active.value = 4
   else if (p.includes('/ai-config')) active.value = 3
   else if (p.includes('/categories')) active.value = 2

@@ -56,6 +56,26 @@
         </div>
       </div>
 
+      <!-- 日历 Emoji -->
+      <div class="section-title">日历标记 Emoji</div>
+      <div class="config-card">
+        <div class="field-row">
+          <label>🍳 做饭</label>
+          <input v-model="form.calEmojiCooking" class="field-icon" placeholder="🍳" style="width:60px;" />
+          <span style="font-size:12px;color:#aeaeb2;flex:1;">有做饭订单时显示</span>
+        </div>
+        <div class="field-row">
+          <label>🍜 下馆子</label>
+          <input v-model="form.calEmojiDining" class="field-icon" placeholder="🍜" style="width:60px;" />
+          <span style="font-size:12px;color:#aeaeb2;flex:1;">记录外出就餐时显示</span>
+        </div>
+        <div class="field-row">
+          <label>📝 日记</label>
+          <input v-model="form.calEmojiDiary" class="field-icon" placeholder="📝" style="width:60px;" />
+          <span style="font-size:12px;color:#aeaeb2;flex:1;">写了日记时显示</span>
+        </div>
+      </div>
+
       <!-- 预览 -->
       <div class="section-title">预览</div>
       <div class="preview-card">
@@ -94,6 +114,9 @@ const form = ref({
   loginBtn: '',
   adminTitle: '',
   successMsg: '',
+  calEmojiCooking: '🍳',
+  calEmojiDining: '🍜',
+  calEmojiDiary: '📝',
 })
 
 const tabs = ref([
@@ -118,6 +141,9 @@ onMounted(async () => {
       tabs.value[1].label = cfg.tab1Label || '订单'
       tabs.value[2].icon = cfg.tab2Icon || '📖'
       tabs.value[2].label = cfg.tab2Label || '历史'
+      form.value.calEmojiCooking = cfg.calEmojiCooking || '🍳'
+      form.value.calEmojiDining = cfg.calEmojiDining || '🍜'
+      form.value.calEmojiDiary = cfg.calEmojiDiary || '📝'
     }
   } catch (e) {
     showToast({ message: '加载失败：' + e.message, type: 'fail' })

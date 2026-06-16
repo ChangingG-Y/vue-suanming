@@ -24,6 +24,7 @@ const router = createRouter({
         { path: 'orders/:id', component: () => import('./views/order/OrderDetailView.vue') },
         { path: 'review/:orderId', component: () => import('./views/order/ReviewView.vue') },
         { path: 'history', component: () => import('./views/order/HistoryView.vue') },
+        { path: 'profile', component: () => import('./views/order/ProfileView.vue') },
       ]
     },
     {
@@ -37,6 +38,7 @@ const router = createRouter({
         { path: 'categories', component: () => import('./views/order/admin/AdminCategoriesView.vue') },
         { path: 'ai-config', component: () => import('./views/order/admin/AdminAiConfigView.vue') },
         { path: 'layout-config', component: () => import('./views/order/admin/LayoutConfigView.vue') },
+        { path: 'profile', component: () => import('./views/order/admin/AdminProfileView.vue') },
         { path: 'super', component: () => import('./views/order/admin/SuperAdminView.vue'), meta: { requiresSuperAdmin: true } },
       ]
     },
@@ -51,10 +53,12 @@ router.beforeEach((to, from, next) => {
     if (role !== 0) return next('/order/admin/orders')
   } else if (to.meta.requiresAdmin) {
     if (!token) return next('/order/login')
-    // role 0 = super admin, role 1 = tenant admin; both can access admin
     if (role > 1) return next('/order/menu')
   } else if (to.meta.requiresOrderAuth) {
     if (!token) return next('/order/login')
+    // admins accessing user routes → redirect to admin equivalent
+    if (role <= 1 && to.path === '/order/profile') return next('/order/admin/profile')
+    if (role <= 1 && to.path === '/order/menu') return next('/order/admin/orders')
   }
   next()
 })
