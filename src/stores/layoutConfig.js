@@ -17,6 +17,9 @@ const DEFAULTS = {
   calEmojiCooking: '🍳',
   calEmojiDining: '🍜',
   calEmojiDiary: '📝',
+  calLabelCooking: '做饭',
+  calLabelDining: '下馆子',
+  calLabelDiary: '日记',
 }
 
 export const useLayoutConfigStore = defineStore('layoutConfig', () => {

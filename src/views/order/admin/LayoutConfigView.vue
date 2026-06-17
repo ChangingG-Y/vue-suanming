@@ -56,23 +56,23 @@
         </div>
       </div>
 
-      <!-- 日历 Emoji -->
-      <div class="section-title">日历标记 Emoji</div>
+      <!-- 日历 Emoji 与文字 -->
+      <div class="section-title">日历标记 Emoji 与文字</div>
       <div class="config-card">
         <div class="field-row">
-          <label>🍳 做饭</label>
-          <input v-model="form.calEmojiCooking" class="field-icon" placeholder="🍳" style="width:60px;" />
-          <span style="font-size:12px;color:#aeaeb2;flex:1;">有做饭订单时显示</span>
+          <label>做饭</label>
+          <input v-model="form.calEmojiCooking" class="field-icon" placeholder="🍳" />
+          <input v-model="form.calLabelCooking" class="field-label" placeholder="做饭" />
         </div>
         <div class="field-row">
-          <label>🍜 下馆子</label>
-          <input v-model="form.calEmojiDining" class="field-icon" placeholder="🍜" style="width:60px;" />
-          <span style="font-size:12px;color:#aeaeb2;flex:1;">记录外出就餐时显示</span>
+          <label>下馆子</label>
+          <input v-model="form.calEmojiDining" class="field-icon" placeholder="🍜" />
+          <input v-model="form.calLabelDining" class="field-label" placeholder="下馆子" />
         </div>
         <div class="field-row">
-          <label>📝 日记</label>
-          <input v-model="form.calEmojiDiary" class="field-icon" placeholder="📝" style="width:60px;" />
-          <span style="font-size:12px;color:#aeaeb2;flex:1;">写了日记时显示</span>
+          <label>日记</label>
+          <input v-model="form.calEmojiDiary" class="field-icon" placeholder="📝" />
+          <input v-model="form.calLabelDiary" class="field-label" placeholder="日记" />
         </div>
       </div>
 
@@ -117,6 +117,9 @@ const form = ref({
   calEmojiCooking: '🍳',
   calEmojiDining: '🍜',
   calEmojiDiary: '📝',
+  calLabelCooking: '做饭',
+  calLabelDining: '下馆子',
+  calLabelDiary: '日记',
 })
 
 const tabs = ref([
@@ -144,6 +147,9 @@ onMounted(async () => {
       form.value.calEmojiCooking = cfg.calEmojiCooking || '🍳'
       form.value.calEmojiDining = cfg.calEmojiDining || '🍜'
       form.value.calEmojiDiary = cfg.calEmojiDiary || '📝'
+      form.value.calLabelCooking = cfg.calLabelCooking || '做饭'
+      form.value.calLabelDining = cfg.calLabelDining || '下馆子'
+      form.value.calLabelDiary = cfg.calLabelDiary || '日记'
     }
   } catch (e) {
     showToast({ message: '加载失败：' + e.message, type: 'fail' })
