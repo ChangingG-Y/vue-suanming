@@ -1,39 +1,53 @@
 <template>
   <div class="profile-page">
     <!-- Hero banner -->
-    <div class="hero-banner">
+    <div class="hero-banner" :class="{ partner: viewPartner }">
       <div class="banner-inner-clip">
         <div class="banner-bg"></div>
         <div class="banner-deco d1"></div>
         <div class="banner-deco d2"></div>
         <div class="banner-deco d3"></div>
       </div>
-      <div class="avatar-ring" @click="triggerAvatarUpload">
-        <img v-if="profile.avatarUrl" :src="profile.avatarUrl" class="avatar-img" />
-        <div v-else class="avatar-placeholder">{{ (profile.nickname || '?')[0] }}</div>
-        <div class="avatar-edit-badge">📷</div>
-      </div>
-      <input ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="onAvatarChange" />
+      <button v-if="!viewPartner" class="peek-btn" @click="switchToPartner">看看TA 👀</button>
+      <button v-else class="peek-btn back" @click="switchToSelf">← 我的</button>
+      <button class="logout-btn-hero" @click="doLogout" title="退出登录">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
+        </svg>
+      </button>
     </div>
 
     <!-- Profile card -->
-    <div class="profile-card">
-      <div class="profile-name-row">
-        <span class="profile-name">{{ profile.nickname || '未设置昵称' }}</span>
-        <button class="edit-btn" @click="openEdit">编辑资料</button>
+    <div class="profile-card" :class="{ partner: viewPartner }">
+      <div class="avatar-ring" :class="{ clickable: !viewPartner }" @click="!viewPartner && triggerAvatarUpload()">
+        <img v-if="currentProfile.avatarUrl" :src="absImgUrl(currentProfile.avatarUrl)" class="avatar-img" />
+        <div v-else class="avatar-placeholder">{{ (currentProfile.nickname || '?')[0] }}</div>
+        <div v-if="!viewPartner" class="avatar-edit-badge">📷</div>
       </div>
-      <div v-if="profile.bio" class="profile-bio">{{ profile.bio }}</div>
+      <input v-if="!viewPartner" ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="onAvatarChange" />
+      <div class="profile-name-row">
+        <span class="profile-name">
+          {{ currentProfile.nickname || '未设置昵称' }}
+          <span v-if="viewPartner" class="ta-badge">TA</span>
+        </span>
+        <button v-if="!viewPartner" class="edit-btn" @click="openEdit">编辑资料</button>
+      </div>
+      <div v-if="currentProfile.bio" class="profile-bio">{{ currentProfile.bio }}</div>
       <div class="stats-row">
         <div class="stat-pill">
-          <div class="stat-num">{{ profile.height ?? '—' }}</div>
+          <div class="stat-num">{{ currentProfile.height ?? '—' }}</div>
           <div class="stat-unit">cm · 身高</div>
         </div>
         <div class="stat-sep"></div>
-        <div class="stat-pill clickable" @click="openWeightInput">
-          <div class="stat-num weight-num">{{ profile.currentWeight != null ? displayWeight(profile.currentWeight) : '记录' }}</div>
+        <div class="stat-pill" :class="{ clickable: !viewPartner }" @click="!viewPartner && openWeightInput()">
+          <div class="stat-num" :class="viewPartner ? 'weight-partner' : 'weight-num'">
+            {{ currentProfile.currentWeight != null ? displayWeight(currentProfile.currentWeight) : (viewPartner ? '—' : '记录') }}
+          </div>
           <div class="stat-unit">
-            <span class="unit-tag" @click.stop="toggleWeightUnit">{{ weightUnit === 'kg' ? 'kg' : '斤' }} ⇄</span> · 体重
-            <span v-if="profile.currentWeightDate" class="weight-since"> · {{ formatDateShort(profile.currentWeightDate) }}</span>
+            <span v-if="!viewPartner" class="unit-tag" @click.stop="toggleWeightUnit">{{ weightUnit === 'kg' ? 'kg' : '斤' }} ⇄</span>
+            <span v-else>{{ weightUnit === 'kg' ? 'kg' : '斤' }}</span>
+            · 体重
+            <span v-if="!viewPartner && currentProfile.currentWeightDate" class="weight-since"> · {{ formatDateShort(currentProfile.currentWeightDate) }}</span>
           </div>
         </div>
       </div>
@@ -42,15 +56,15 @@
     <!-- Weight trend -->
     <div class="section-card">
       <div class="section-header">
-        <span class="section-title">📈 体重趋势</span>
-        <span class="section-action" @click="openWeightInput">+ 今日记录</span>
+        <span class="section-title">📈 {{ viewPartner ? 'TA 的' : '' }}体重趋势</span>
+        <span v-if="!viewPartner" class="section-action" @click="openWeightInput">+ 今日记录</span>
       </div>
-      <div v-if="weightRecords.length > 1" class="chart-wrap">
+      <div v-if="currentWeightRecords.length > 1" class="chart-wrap">
         <svg class="weight-chart" :viewBox="`0 0 ${chartW} ${chartH}`" preserveAspectRatio="none">
           <defs>
-            <linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#c96b7e" stop-opacity="0.25" />
-              <stop offset="100%" stop-color="#c96b7e" stop-opacity="0.02" />
+            <linearGradient :id="'wg' + (viewPartner ? 'p' : 'm')" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" :stop-color="lineColor" stop-opacity="0.25" />
+              <stop offset="100%" :stop-color="lineColor" stop-opacity="0.02" />
             </linearGradient>
           </defs>
           <!-- Y axis labels -->
@@ -59,41 +73,41 @@
           <!-- Grid lines -->
           <line v-for="y in [padT, padT + (chartH - padT - padB) / 2, chartH - padB]" :key="y"
             :x1="padL" :y1="y" :x2="chartW - padR" :y2="y" stroke="#f0f0f5" stroke-width="1" />
-          <path :d="chartAreaPath" fill="url(#wgrad)" />
-          <path :d="chartLinePath" fill="none" stroke="#c96b7e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <path :d="chartAreaPath" :fill="`url(#${viewPartner ? 'wgp' : 'wgm'})`" />
+          <path :d="chartLinePath" fill="none" :stroke="lineColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           <!-- Value labels at key points -->
           <template v-for="i in chartLabelIndices" :key="'lbl'+i">
             <text v-if="chartPoints[i]"
               :x="clamp(chartPoints[i].x, padL + 14, chartW - padR - 14)"
               :y="chartPoints[i].y - 7"
-              text-anchor="middle" fill="#c96b7e" font-size="8.5" font-weight="700">
-              {{ displayWeight(weightRecords[i].weight) }}
+              text-anchor="middle" :fill="lineColor" font-size="8.5" font-weight="700">
+              {{ displayWeight(currentWeightRecords[i].weight) }}
             </text>
           </template>
           <!-- Dots -->
           <circle v-for="(pt, i) in chartPoints" :key="i" :cx="pt.x" :cy="pt.y" r="3.5"
-            fill="#fff" stroke="#c96b7e" stroke-width="2" style="cursor:pointer"
+            fill="#fff" :stroke="lineColor" stroke-width="2" style="cursor:pointer"
             @click="tappedWeightIdx = tappedWeightIdx === i ? null : i" />
         </svg>
         <div class="chart-labels">
           <span v-for="(r, i) in chartLabelRecords" :key="i">{{ formatDateShort(r.recordDate) }}</span>
         </div>
       </div>
-      <div v-else-if="weightRecords.length === 1" class="empty-chart">
-        <div class="solo-weight">{{ displayWeight(weightRecords[0].weight) }}<span class="solo-unit"> {{ weightUnit === 'kg' ? 'kg' : '斤' }}</span></div>
-        <div class="solo-date">{{ formatDateShort(weightRecords[0].recordDate) }}</div>
+      <div v-else-if="currentWeightRecords.length === 1" class="empty-chart">
+        <div class="solo-weight" :style="{ color: lineColor }">{{ displayWeight(currentWeightRecords[0].weight) }}<span class="solo-unit"> {{ weightUnit === 'kg' ? 'kg' : '斤' }}</span></div>
+        <div class="solo-date">{{ formatDateShort(currentWeightRecords[0].recordDate) }}</div>
         <p class="empty-tip">再记一次就能看到趋势图啦 📉</p>
       </div>
       <div v-else class="empty-chart">
-        <div class="empty-icon">🌸</div>
-        <p class="empty-tip">还没有体重记录，点右上角开始吧</p>
+        <div class="empty-icon">{{ viewPartner ? '💭' : '🌸' }}</div>
+        <p class="empty-tip">{{ viewPartner ? 'TA 还没有体重记录' : '还没有体重记录，点右上角开始吧' }}</p>
       </div>
     </div>
 
     <!-- Calendar -->
     <div class="section-card">
       <div class="section-header">
-        <span class="section-title">📅 生活日历</span>
+        <span class="section-title">📅 {{ viewPartner ? 'TA 的' : '' }}生活日历</span>
         <div class="month-nav">
           <button class="month-btn" @click="changeMonth(-1)">‹</button>
           <span class="month-label">{{ calYear }}年{{ calMonth }}月</span>
@@ -106,7 +120,8 @@
         <span class="legend-item"><span class="legend-emoji">{{ cfg.calEmojiDiary }}</span>{{ cfg.calLabelDiary }}</span>
       </div>
       <div class="calendar-grid">
-        <div class="cal-weekday" v-for="d in ['日','一','二','三','四','五','六']" :key="d">{{ d }}</div>
+        <div class="cal-weekday" v-for="(d, i) in ['日','一','二','三','四','五','六']" :key="d"
+             :class="{ 'wd-sun': i === 0, 'wd-sat': i === 6 }">{{ d }}</div>
         <div v-for="n in calStartBlank" :key="'b'+n" class="cal-cell-empty"></div>
         <div
           v-for="day in calendarDays" :key="day.date"
@@ -114,44 +129,28 @@
           :class="{
             'active': day.hasOrder || day.hasVisit || day.hasDiary || day.weight != null,
             'today': day.date === todayStr,
-            'selected': selectedCalDate === day.date
+            'selected': selectedCalDate === day.date,
+            'cal-sun': getDayOfWeek(day.date) === 0,
+            'cal-sat': getDayOfWeek(day.date) === 6,
+            'cal-holiday-day': !!HOLIDAYS[day.date]
           }"
           @click="selectCalDay(day)"
         >
-          <span class="cal-num" :class="{ 'today-num': day.date === todayStr }">{{ +day.date.split('-')[2] }}</span>
+          <span class="cal-num" :class="{ 'today-num': day.date === todayStr && !viewPartner, 'today-num-partner': day.date === todayStr && viewPartner }">{{ +day.date.split('-')[2] }}</span>
           <div class="cal-emojis">
             <span v-if="day.hasOrder">{{ cfg.calEmojiCooking }}</span>
             <span v-if="day.hasVisit">{{ cfg.calEmojiDining }}</span>
             <span v-if="day.hasDiary">{{ cfg.calEmojiDiary }}</span>
           </div>
-          <span v-if="day.weight" class="cal-kg">{{ displayWeight(day.weight) }}</span>
+          <span v-if="HOLIDAYS[day.date]" class="cal-holiday">{{ HOLIDAYS[day.date] }}</span>
+          <span v-if="day.weight" class="cal-kg" :class="{ 'partner-kg': viewPartner }">{{ displayWeight(day.weight) }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Quick-action bar (when day selected) -->
-    <transition name="slide-up">
-      <div v-if="selectedCalDate" class="quick-bar">
-        <span class="quick-date">{{ selectedCalDate }}</span>
-        <div class="quick-btns">
-          <button class="qb dining" @click="openVisitForm(selectedCalDate)">
-            <span class="qb-icon">{{ cfg.calEmojiDining }}</span>
-            <span class="qb-lbl">{{ cfg.calLabelDining }}</span>
-          </button>
-          <button class="qb diary" @click="openDiaryForm(selectedCalDate)">
-            <span class="qb-icon">{{ cfg.calEmojiDiary }}</span>
-            <span class="qb-lbl">{{ cfg.calLabelDiary }}</span>
-          </button>
-          <button class="qb weight" @click="openWeightForDate(selectedCalDate)">
-            <span class="qb-icon">⚖️</span>
-            <span class="qb-lbl">体重</span>
-          </button>
-        </div>
-      </div>
-    </transition>
 
-    <!-- Weight list -->
-    <div v-if="weightRecords.length > 0" class="section-card">
+    <!-- Weight list (own, editable) -->
+    <div v-if="!viewPartner && weightRecords.length > 0" class="section-card">
       <div class="section-header">
         <span class="section-title">⚖️ 近期记录</span>
         <span class="section-action unit-tag-small" @click="toggleWeightUnit">{{ weightUnit === 'kg' ? '切换斤' : '切换kg' }}</span>
@@ -165,6 +164,25 @@
           <div class="wt-right">
             <span class="wt-val">{{ displayWeight(r.weight) }}<span class="wt-unit"> {{ weightUnit === 'kg' ? 'kg' : '斤' }}</span></span>
             <button class="wt-del" @click="confirmDeleteWeight(r)">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weight list (partner, read-only) -->
+    <div v-if="viewPartner && partnerWeightRecords.length > 0" class="section-card">
+      <div class="section-header">
+        <span class="section-title">⚖️ TA 的近期体重</span>
+        <span>{{ weightUnit === 'kg' ? 'kg' : '斤' }}</span>
+      </div>
+      <div class="weight-list">
+        <div v-for="r in [...partnerWeightRecords].reverse().slice(0, 10)" :key="r.id" class="wt-row">
+          <div class="wt-left">
+            <span class="wt-date">{{ r.recordDate }}</span>
+            <span v-if="r.note" class="wt-note">{{ r.note }}</span>
+          </div>
+          <div class="wt-right">
+            <span class="wt-val" style="color:#5b8af0">{{ displayWeight(r.weight) }}<span class="wt-unit"> {{ weightUnit === 'kg' ? 'kg' : '斤' }}</span></span>
           </div>
         </div>
       </div>
@@ -210,15 +228,16 @@
             <span>体重</span>
             <button class="unit-toggle-btn" @click="toggleWeightUnit">切换为 {{ weightUnit === 'kg' ? '斤' : 'kg' }}</button>
           </div>
-          <div class="weight-slider-wrap" @mousedown="startWeightDrag" @touchstart.prevent="startWeightDrag" :class="{ dragging: isWeightDragging }">
-            <button class="ws-arrow" @click.stop="adjustWeight(-0.5)">‹</button>
-            <div class="ws-display">
-              <span class="ws-val">{{ weightDisplayVal.toFixed(1) }}</span>
-              <span class="ws-unit-lbl">{{ weightUnit === 'kg' ? 'kg' : '斤' }}</span>
+          <div class="ruler-outer">
+            <div class="ruler-display">
+              <span class="ruler-val">{{ weightDisplayVal.toFixed(1) }}</span>
+              <span class="ruler-unit-lbl">{{ weightUnit === 'kg' ? 'kg' : '斤' }}</span>
             </div>
-            <button class="ws-arrow" @click.stop="adjustWeight(0.5)">›</button>
+            <div class="ruler-scroll" ref="rulerScrollRef" @scroll.passive="onRulerScroll">
+              <canvas ref="rulerCanvasRef" height="44" style="display:block;"></canvas>
+            </div>
+            <div class="ruler-center-pin"></div>
           </div>
-          <div class="ws-hint">← 左右拖动调节，精度 0.1 →</div>
         </div>
         <div class="form-field">
           <div class="form-label">备注 <span class="form-hint">选填</span></div>
@@ -330,11 +349,7 @@
     <!-- Day detail -->
     <van-popup v-model:show="showDayDetail" round position="bottom" safe-area-inset-bottom :style="{maxHeight:'92vh',overflowY:'auto'}">
       <div class="sheet-inner">
-        <div v-if="dayDetailLoading" class="detail-loading">
-          <van-loading color="#c96b7e" size="32px" />
-          <p class="detail-loading-txt">加载中…</p>
-        </div>
-        <template v-else-if="dayDetail">
+        <template v-if="dayDetail">
           <div class="detail-header">
             <div class="detail-date">{{ formatDayLabel(dayDetail.date) }}</div>
             <button class="detail-close" @click="showDayDetail = false">✕</button>
@@ -357,10 +372,10 @@
               </div>
               <div v-if="order.remark" class="ob-remark">📝 {{ order.remark }}</div>
               <div v-if="order.review" class="ob-review">
-                <div class="rev-stars">{{ '★'.repeat(order.review.score) }}<span class="rev-empty-stars">{{ '★'.repeat(5 - order.review.score) }}</span></div>
+                <div class="rev-stars">{{ '★'.repeat(Math.min(5, Math.max(0, Math.round(order.review.score)))) }}<span class="rev-empty-stars">{{ '★'.repeat(Math.max(0, 5 - Math.min(5, Math.round(order.review.score)))) }}</span></div>
                 <div v-if="order.review.content" class="rev-text">"{{ order.review.content }}"</div>
                 <div v-if="order.review.images?.length" class="rev-imgs">
-                  <img v-for="(img, i) in order.review.images" :key="i" :src="img" class="rev-thumb" @click="previewImg(order.review.images, i)" />
+                  <img v-for="(img, i) in order.review.images" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(order.review.images.map(absImgUrl), i)" />
                 </div>
               </div>
             </div>
@@ -372,15 +387,15 @@
               <div class="vb-head">
                 <span class="vb-meal">{{ getMealTypeName(v.mealType) }}</span>
                 <span class="vb-name">{{ v.restaurantName }}</span>
-                <span v-if="v.score" class="vb-score">{{ '★'.repeat(Math.round(v.score)) }}</span>
-                <button class="vb-del" @click="confirmDeleteVisit(v, dayDetail.date)">✕</button>
+                <span v-if="v.score" class="vb-score">{{ '★'.repeat(Math.min(5, Math.max(0, Math.round(v.score)))) }}</span>
+                <button v-if="!viewPartner" class="vb-del" @click="confirmDeleteVisit(v, dayDetail.date)">✕</button>
               </div>
               <div v-if="v.content" class="vb-text">"{{ v.content }}"</div>
               <div v-if="v.imageUrls?.length" class="rev-imgs">
-                <img v-for="(img, i) in v.imageUrls" :key="i" :src="img" class="rev-thumb" @click="previewImg(v.imageUrls, i)" />
+                <img v-for="(img, i) in v.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(v.imageUrls.map(absImgUrl), i)" />
               </div>
             </div>
-            <button class="more-btn" @click="openVisitForm(dayDetail.date)">+ 再添一条</button>
+            <button v-if="!viewPartner" class="more-btn" @click="openVisitForm(dayDetail.date)">+ 再添一条</button>
           </template>
 
           <template v-if="dayDetail.diary">
@@ -388,21 +403,56 @@
             <div class="diary-block">
               <p class="diary-text">{{ dayDetail.diary.content }}</p>
               <div v-if="dayDetail.diary.imageUrls?.length" class="rev-imgs" style="margin-top:8px">
-                <img v-for="(img, i) in dayDetail.diary.imageUrls" :key="i" :src="img" class="rev-thumb" @click="previewImg(dayDetail.diary.imageUrls, i)" />
+                <img v-for="(img, i) in dayDetail.diary.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(dayDetail.diary.imageUrls.map(absImgUrl), i)" />
               </div>
-              <div class="diary-actions">
+              <div v-if="!viewPartner" class="diary-actions">
                 <button class="da-btn" @click="editDiary(dayDetail)">✏️ 编辑</button>
                 <button class="da-btn del" @click="confirmDeleteDiary(dayDetail.diary, dayDetail.date)">🗑 删除</button>
               </div>
             </div>
           </template>
 
-          <div v-if="!dayDetail.orders?.length && !dayDetail.visits?.length && !dayDetail.diary && !dayDetail.weight" class="detail-empty">这天还没有记录</div>
+          <!-- Partner's records section -->
+          <template v-if="dayDetail.partnerNickname && (dayDetail.partnerVisits?.length || dayDetail.partnerDiary || dayDetail.partnerWeight != null)">
+            <div class="detail-partner-divider">{{ dayDetail.partnerNickname }} 的记录</div>
+            <template v-if="dayDetail.partnerVisits?.length">
+              <div class="detail-section-label">{{ cfg.calEmojiDining }} {{ cfg.calLabelDining }}</div>
+              <div v-for="v in dayDetail.partnerVisits" :key="v.id" class="visit-block partner-block">
+                <div class="vb-head">
+                  <span class="vb-meal">{{ getMealTypeName(v.mealType) }}</span>
+                  <span class="vb-name">{{ v.restaurantName }}</span>
+                  <span v-if="v.score" class="vb-score">{{ '★'.repeat(Math.min(5, Math.max(0, Math.round(v.score)))) }}</span>
+                </div>
+                <div v-if="v.content" class="vb-text">"{{ v.content }}"</div>
+                <div v-if="v.imageUrls?.length" class="rev-imgs">
+                  <img v-for="(img, i) in v.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(v.imageUrls.map(absImgUrl), i)" />
+                </div>
+              </div>
+            </template>
+            <template v-if="dayDetail.partnerDiary">
+              <div class="detail-section-label">{{ cfg.calEmojiDiary }} {{ cfg.calLabelDiary }}</div>
+              <div class="diary-block partner-block">
+                <p class="diary-text">{{ dayDetail.partnerDiary.content }}</p>
+                <div v-if="dayDetail.partnerDiary.imageUrls?.length" class="rev-imgs" style="margin-top:8px">
+                  <img v-for="(img, i) in dayDetail.partnerDiary.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(dayDetail.partnerDiary.imageUrls.map(absImgUrl), i)" />
+                </div>
+              </div>
+            </template>
+            <div v-if="dayDetail.partnerWeight != null" class="detail-weight-pill" style="background:#eff6ff;color:#3b82f6">
+              ⚖️ <strong>{{ displayWeight(dayDetail.partnerWeight) }} {{ weightUnit === 'kg' ? 'kg' : '斤' }}</strong>
+            </div>
+          </template>
 
-          <div class="detail-add-row">
+          <div v-if="!dayDetail.orders?.length && !dayDetail.visits?.length && !dayDetail.diary && !dayDetail.weight && !dayDetail.partnerVisits?.length && !dayDetail.partnerDiary" class="detail-empty">这天还没有记录</div>
+
+          <div v-if="!viewPartner" class="detail-add-row">
             <button class="dab dining" @click="openVisitForm(dayDetail.date); showDayDetail = false">{{ cfg.calEmojiDining }}<br><span>{{ cfg.calLabelDining }}</span></button>
             <button class="dab diary" @click="openDiaryForm(dayDetail.date); showDayDetail = false">{{ cfg.calEmojiDiary }}<br><span>{{ cfg.calLabelDiary }}</span></button>
             <button class="dab weight" @click="openWeightForDate(dayDetail.date); showDayDetail = false">⚖️<br><span>体重</span></button>
+          </div>
+
+          <div class="sheet-btns" style="margin-top:12px">
+            <button class="s-confirm" style="flex:1" @click="showDayDetail = false">关闭</button>
           </div>
         </template>
       </div>
@@ -411,23 +461,65 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { showImagePreview, showToast, showConfirmDialog } from 'vant'
 import { useLayoutConfigStore } from '../../stores/layoutConfig.js'
+import { useOrderAuthStore } from '../../stores/orderAuth.js'
 import {
   getMyProfile, updateMyProfile, uploadAvatar,
   getWeightRecords, saveWeight, deleteWeight,
-  getCalendar, getDayDetail
+  getCalendar, getDayDetail,
+  getPartnerProfile, getPartnerWeight
 } from '../../api/orderProfile.js'
 import { saveVisit, deleteVisit, saveDiary, deleteDiary, uploadLifePhoto } from '../../api/orderLifeRecord.js'
+import { absImgUrl } from '../../api/orderFile.js'
 import { prepareLifePhoto } from '../../utils/imageUtils.js'
 
+const router = useRouter()
 const layoutStore = useLayoutConfigStore()
+const authStore = useOrderAuthStore()
 const cfg = computed(() => layoutStore.config)
 
+function doLogout() {
+  authStore.clearAuth()
+  layoutStore.reset()
+  router.push('/order/login')
+}
+
+// 法定节假日 (2025-2026)
+const HOLIDAYS = {
+  '2025-01-01':'元旦','2025-01-28':'春节','2025-01-29':'春节','2025-01-30':'春节',
+  '2025-01-31':'春节','2025-02-01':'春节','2025-02-02':'春节','2025-02-03':'春节','2025-02-04':'春节',
+  '2025-04-04':'清明','2025-04-05':'清明','2025-04-06':'清明',
+  '2025-05-01':'劳动','2025-05-02':'劳动','2025-05-03':'劳动','2025-05-04':'劳动','2025-05-05':'劳动',
+  '2025-05-31':'端午','2025-06-01':'端午','2025-06-02':'端午',
+  '2025-10-01':'国庆','2025-10-02':'国庆','2025-10-03':'国庆','2025-10-04':'国庆',
+  '2025-10-05':'国庆','2025-10-06':'国庆','2025-10-07':'国庆',
+  '2026-01-01':'元旦',
+  '2026-02-17':'春节','2026-02-18':'春节','2026-02-19':'春节','2026-02-20':'春节',
+  '2026-02-21':'春节','2026-02-22':'春节','2026-02-23':'春节','2026-02-24':'春节',
+  '2026-04-04':'清明','2026-04-05':'清明','2026-04-06':'清明',
+  '2026-05-01':'劳动','2026-05-02':'劳动','2026-05-03':'劳动','2026-05-04':'劳动','2026-05-05':'劳动',
+  '2026-06-19':'端午','2026-06-20':'端午','2026-06-21':'端午',
+  '2026-10-01':'国庆','2026-10-02':'国庆','2026-10-03':'国庆','2026-10-04':'国庆',
+  '2026-10-05':'国庆','2026-10-06':'国庆','2026-10-07':'国庆',
+}
+
+function getDayOfWeek(dateStr) {
+  return new Date(dateStr + 'T00:00:00').getDay()
+}
+
+const viewPartner = ref(false)
 const profile = ref({ nickname: '', avatarUrl: '', height: null, bio: '', currentWeight: null, currentWeightDate: null })
+const partnerProfile = ref({ nickname: '', avatarUrl: '', height: null, bio: '', currentWeight: null, currentWeightDate: null })
 const weightRecords = ref([])
+const partnerWeightRecords = ref([])
 const calendarDays = ref([])
+
+const currentProfile = computed(() => viewPartner.value ? partnerProfile.value : profile.value)
+const currentWeightRecords = computed(() => viewPartner.value ? partnerWeightRecords.value : weightRecords.value)
+const lineColor = computed(() => viewPartner.value ? '#5b8af0' : '#c96b7e')
 const calYear = ref(new Date().getFullYear())
 const calMonth = ref(new Date().getMonth() + 1)
 const todayStr = new Date().toISOString().split('T')[0]
@@ -465,6 +557,7 @@ const isWeightDragging = ref(false)
 watch(weightUnit, () => {
   const kg = parseFloat(weightForm.value.weight) || 0
   weightDisplayVal.value = weightUnit.value === 'jin' ? parseFloat((kg * 2).toFixed(1)) : parseFloat(kg.toFixed(1))
+  if (showWeightModal.value) nextTick(() => snapRulerToKg(kg, false))
 })
 function adjustWeight(delta) {
   const newVal = Math.max(20, Math.min(300, Math.round((weightDisplayVal.value + delta) * 10) / 10))
@@ -495,6 +588,75 @@ function startWeightDrag(e) {
   document.addEventListener('touchend', onEnd)
 }
 
+// ── Weight ruler ──────────────────────────────────────────────────────────
+const rulerScrollRef = ref(null)
+const rulerCanvasRef = ref(null)
+let _rulerBusy = false
+const RULER_MIN = 30, RULER_MAX = 150, RULER_STEP = 0.5, RULER_PX = 8
+
+function drawRulerCanvas() {
+  const canvas = rulerCanvasRef.value
+  const scroll = rulerScrollRef.value
+  if (!canvas || !scroll) return
+  const halfW = scroll.offsetWidth / 2
+  const steps = (RULER_MAX - RULER_MIN) / RULER_STEP
+  const totalW = Math.round(steps * RULER_PX + scroll.offsetWidth)
+  canvas.width = totalW
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, totalW, 44)
+  for (let i = 0; i <= steps; i++) {
+    const kg = RULER_MIN + i * RULER_STEP
+    const x = halfW + i * RULER_PX
+    let h, sw, color
+    if (Math.round(kg) % 10 === 0) { h = 34; sw = 2; color = '#6d6d72' }
+    else if (Math.round(kg * 2) % 10 === 0) { h = 26; sw = 1.5; color = '#aeaeb2' }
+    else if (Math.round(kg) === kg) { h = 18; sw = 1.5; color = '#c8c8cc' }
+    else { h = 10; sw = 1; color = '#e5e5ea' }
+    ctx.beginPath()
+    ctx.strokeStyle = color
+    ctx.lineWidth = sw
+    ctx.moveTo(x, 44 - h)
+    ctx.lineTo(x, 44)
+    ctx.stroke()
+    if (Math.round(kg) % 10 === 0) {
+      ctx.font = '9px -apple-system, system-ui'
+      ctx.fillStyle = '#aeaeb2'
+      ctx.textAlign = 'center'
+      ctx.fillText(kg.toFixed(0), x, 44 - h - 4)
+    }
+  }
+}
+
+function snapRulerToKg(kg, smooth) {
+  const el = rulerScrollRef.value
+  if (!el) return
+  const left = Math.round((kg - RULER_MIN) / RULER_STEP) * RULER_PX
+  el.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'instant' })
+}
+
+function onRulerScroll() {
+  if (_rulerBusy) return
+  const el = rulerScrollRef.value
+  if (!el) return
+  const rawKg = RULER_MIN + (el.scrollLeft / RULER_PX) * RULER_STEP
+  const kg = Math.max(RULER_MIN, Math.min(RULER_MAX, Math.round(rawKg / RULER_STEP) * RULER_STEP))
+  _rulerBusy = true
+  const display = weightUnit.value === 'jin' ? kg * 2 : kg
+  weightDisplayVal.value = parseFloat(display.toFixed(1))
+  weightForm.value.weight = parseFloat(kg.toFixed(1)).toString()
+  setTimeout(() => { _rulerBusy = false }, 30)
+}
+
+watch(() => showWeightModal.value, (show) => {
+  if (!show) return
+  nextTick(() => {
+    drawRulerCanvas()
+    const kg = parseFloat(weightForm.value.weight) || 60
+    snapRulerToKg(Math.max(RULER_MIN, Math.min(RULER_MAX, kg)), false)
+  })
+})
+// ─────────────────────────────────────────────────────────────────────────
+
 const editForm = ref({ nickname: '', height: '', bio: '' })
 const weightForm = ref({ recordDate: todayStr, weight: '60', note: '' })
 const visitForm = ref({ visitDate: todayStr, mealType: 1, restaurantName: '', score: 5, content: '' })
@@ -520,8 +682,8 @@ const dateStripDays = computed(() => {
 // Chart
 const chartW = 320, chartH = 140, padL = 30, padR = 10, padT = 24, padB = 18
 const chartPoints = computed(() => {
-  if (weightRecords.value.length < 2) return []
-  const vals = weightRecords.value.map(r => parseFloat(r.weight))
+  if (currentWeightRecords.value.length < 2) return []
+  const vals = currentWeightRecords.value.map(r => parseFloat(r.weight))
   const minV = Math.min(...vals), maxV = Math.max(...vals), range = maxV - minV || 1
   return vals.map((v, i) => ({
     x: padL + (i / (vals.length - 1)) * (chartW - padL - padR),
@@ -529,12 +691,12 @@ const chartPoints = computed(() => {
   }))
 })
 const chartMinVal = computed(() => {
-  if (!weightRecords.value.length) return ''
-  return displayWeight(Math.min(...weightRecords.value.map(r => parseFloat(r.weight))))
+  if (!currentWeightRecords.value.length) return ''
+  return displayWeight(Math.min(...currentWeightRecords.value.map(r => parseFloat(r.weight))))
 })
 const chartMaxVal = computed(() => {
-  if (!weightRecords.value.length) return ''
-  return displayWeight(Math.max(...weightRecords.value.map(r => parseFloat(r.weight))))
+  if (!currentWeightRecords.value.length) return ''
+  return displayWeight(Math.max(...currentWeightRecords.value.map(r => parseFloat(r.weight))))
 })
 const chartLinePath = computed(() => chartPoints.value.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '))
 const chartAreaPath = computed(() => {
@@ -554,9 +716,9 @@ const chartLabelIndices = computed(() => {
   return indices
 })
 const chartLabelRecords = computed(() => {
-  const n = weightRecords.value.length
-  if (n <= 4) return weightRecords.value
-  return [0, Math.floor(n / 3), Math.floor(2 * n / 3), n - 1].map(i => weightRecords.value[i])
+  const n = currentWeightRecords.value.length
+  if (n <= 4) return currentWeightRecords.value
+  return [0, Math.floor(n / 3), Math.floor(2 * n / 3), n - 1].map(i => currentWeightRecords.value[i])
 })
 const calStartBlank = computed(() => new Date(calYear.value, calMonth.value - 1, 1).getDay())
 
@@ -565,6 +727,11 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 async function loadProfile() { try { profile.value = await getMyProfile() } catch {} }
 async function loadWeights() { try { weightRecords.value = await getWeightRecords(90) } catch {} }
 async function loadCalendar() { try { calendarDays.value = await getCalendar(calYear.value, calMonth.value) } catch {} }
+async function loadPartnerProfile() { try { const p = await getPartnerProfile(); if (p) partnerProfile.value = p } catch {} }
+async function loadPartnerWeights() { try { partnerWeightRecords.value = await getPartnerWeight(90) } catch {} }
+
+function switchToPartner() { viewPartner.value = true; tappedWeightIdx.value = null; selectedCalDate.value = null; loadPartnerProfile(); loadPartnerWeights(); loadCalendar() }
+function switchToSelf() { viewPartner.value = false; tappedWeightIdx.value = null; selectedCalDate.value = null; loadCalendar() }
 
 onMounted(() => { loadProfile(); loadWeights(); loadCalendar() })
 
@@ -580,7 +747,7 @@ function formatDayLabel(d) {
   return `${y}年${+m}月${+day}日 星期${wd}`
 }
 function getMealTypeName(t) { return ['早饭','午饭','晚饭'][t] ?? '其他' }
-function getStateName(s) { return { 0: '待接单', 1: '已接单', 2: '已完成', 3: '已取消' }[s] ?? '' }
+function getStateName(s) { return { 0: '待接单', 1: '等待开饭', 2: '饭好了', 3: '已完成' }[s] ?? '' }
 
 function changeMonth(delta) {
   let m = calMonth.value + delta, y = calYear.value
@@ -592,17 +759,23 @@ function changeMonth(delta) {
 async function selectCalDay(day) {
   selectedCalDate.value = day.date
   const hasData = day.hasOrder || day.hasVisit || day.hasDiary || day.weight != null
-  if (!hasData) return
+  if (!hasData) {
+    // 伴侣视角下空白日期不弹出
+    if (!viewPartner.value) {
+      dayDetail.value = { date: day.date, orders: [], visits: [], diary: null, weight: null, weightNote: null }
+      showDayDetail.value = true
+    }
+    return
+  }
   dayDetail.value = null
-  dayDetailLoading.value = true
-  showDayDetail.value = true
+  const toast = showToast({ type: 'loading', message: '加载中…', forbidClick: false, duration: 0 })
   try {
     dayDetail.value = await getDayDetail(day.date)
+    if (dayDetail.value) showDayDetail.value = true
   } catch (e) {
     showToast(e.message || '加载失败')
-    showDayDetail.value = false
   } finally {
-    dayDetailLoading.value = false
+    toast.close()
   }
 }
 
@@ -753,6 +926,7 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .hero-banner {
   position: relative; height: 150px;
   background: linear-gradient(135deg, #e8a0b0 0%, #c96b7e 55%, #a84d65 100%);
+  transition: background 0.4s;
 }
 .banner-inner-clip {
   position: absolute; inset: 0; overflow: hidden; border-radius: 0;
@@ -768,12 +942,35 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .d1 { width: 120px; height: 120px; top: -30px; right: -20px; }
 .d2 { width: 80px; height: 80px; top: 20px; right: 60px; background: rgba(255,255,255,0.06); }
 .d3 { width: 60px; height: 60px; bottom: -10px; left: 40px; }
+
+/* 退出登录 + 看看TA 按钮 */
+.logout-btn-hero {
+  position: absolute; top: 14px; left: 14px;
+  background: rgba(255,255,255,0.18); backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255,255,255,0.4); color: #fff;
+  border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 3; transition: background 0.15s;
+}
+.logout-btn-hero:active { background: rgba(255,255,255,0.35); }
+.peek-btn {
+  position: absolute; top: 14px; right: 14px;
+  background: rgba(255,255,255,0.22); backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255,255,255,0.4); color: #fff;
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 12px; font-weight: 700; cursor: pointer; z-index: 3;
+  transition: background 0.15s;
+}
+.peek-btn.back { background: rgba(255,255,255,0.28); }
+.peek-btn:active { background: rgba(255,255,255,0.4); }
+
 .avatar-ring {
-  position: absolute; bottom: -36px; left: 20px;
+  position: absolute; top: -44px; left: 20px;
   width: 88px; height: 88px; border-radius: 50%;
   box-shadow: 0 0 0 4px #fff, 0 4px 20px rgba(201,107,126,0.35);
-  cursor: pointer; overflow: hidden; z-index: 2;
+  overflow: hidden; z-index: 2;
 }
+.avatar-ring.clickable { cursor: pointer; }
 .avatar-img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-placeholder {
   width: 100%; height: 100%; border-radius: 50%;
@@ -791,10 +988,11 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 
 /* ─── Profile card ──────────────────────────── */
 .profile-card {
+  position: relative; z-index: 1;
   background: #fff;
   margin: 0 12px 12px;
   border-radius: 0 0 20px 20px;
-  padding: 48px 16px 16px;
+  padding: 56px 16px 16px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.06);
 }
 .profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
@@ -863,39 +1061,38 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .cal-cell.today { background: rgba(201,107,126,0.05); }
 .cal-cell.selected { background: #ffe0e8; box-shadow: 0 0 0 1.5px #c96b7e inset; }
 .cal-cell:active { transform: scale(0.93); }
+/* 双休底色 */
+.cal-weekday.wd-sun { color: #f87171; }
+.cal-weekday.wd-sat { color: #5b8af0; }
+.cal-cell.cal-sun { background: rgba(248,113,113,0.05); }
+.cal-cell.cal-sat { background: rgba(91,138,240,0.05); }
+.cal-cell.cal-sun.active { background: rgba(201,107,126,0.09); }
+.cal-cell.cal-sat.active { background: rgba(91,138,240,0.09); }
+/* 节日标记 */
+.cal-holiday { display: block; font-size: 7.5px; color: #f87171; font-weight: 800; line-height: 1.2; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.cal-cell.cal-holiday-day { border-top: 2px solid rgba(248,113,113,0.4); }
 .cal-num { font-size: 13px; color: #3a3a3c; font-weight: 500; line-height: 1.3; }
+.cal-cell.cal-sun .cal-num { color: #f87171; }
+.cal-cell.cal-sat .cal-num { color: #5b8af0; }
 .today-num {
-  background: #c96b7e; color: #fff;
+  background: #c96b7e; color: #fff !important;
+  border-radius: 50%; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; line-height: 1;
+}
+.today-num-partner {
+  background: #5b8af0; color: #fff !important;
   border-radius: 50%; width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 800; line-height: 1;
 }
 .cal-emojis { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; margin-top: 2px; min-height: 14px; font-size: 10px; line-height: 1.2; }
 .cal-kg { font-size: 8.5px; color: #c96b7e; font-weight: 700; background: #fef4f5; border-radius: 4px; padding: 1px 3px; margin-top: 2px; }
+.cal-kg.partner-kg { color: #5b8af0; background: #eff6ff; }
 .month-nav { display: flex; align-items: center; gap: 4px; }
 .month-btn { background: none; border: none; font-size: 22px; color: #c96b7e; cursor: pointer; padding: 0 4px; line-height: 1; }
 .month-label { font-size: 13px; font-weight: 600; color: #1c1c1e; min-width: 72px; text-align: center; }
 
-/* ─── Quick bar ─────────────────────────────── */
-.quick-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  background: #fff; margin: 0 12px 12px; border-radius: 16px;
-  padding: 10px 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-}
-.quick-date { font-size: 12px; color: #aeaeb2; }
-.quick-btns { display: flex; gap: 8px; }
-.qb {
-  border: none; border-radius: 12px; padding: 7px 10px; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-}
-.qb-icon { font-size: 16px; line-height: 1; }
-.qb-lbl { font-size: 10px; font-weight: 600; }
-.qb.dining { background: #fff8ed; color: #d97706; }
-.qb.diary { background: #eff6ff; color: #3b82f6; }
-.qb.weight { background: #f0fdf4; color: #16a34a; }
-.qb:active { opacity: 0.7; transform: scale(0.9); }
-.slide-up-enter-active { transition: all 0.2s ease; }
-.slide-up-enter-from { opacity: 0; transform: translateY(10px); }
 
 /* ─── Weight list ───────────────────────────── */
 .weight-list { display: flex; flex-direction: column; gap: 6px; }
@@ -956,27 +1153,35 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
   font-size: 11px; font-weight: 700; cursor: pointer;
 }
 .unit-toggle-btn:active { background: #ffe4ea; }
-.weight-slider-wrap {
-  display: flex; align-items: center; gap: 0;
-  background: #f7f7f9; border-radius: 16px; overflow: hidden;
-  user-select: none; touch-action: none; cursor: ew-resize;
-  transition: box-shadow 0.15s;
+/* ─── Weight ruler ───────────────────────────── */
+.ruler-outer {
+  position: relative; background: #f8f8fa; border-radius: 16px;
+  overflow: hidden; height: 80px; margin-bottom: 4px;
 }
-.weight-slider-wrap.dragging { box-shadow: 0 0 0 2px #c96b7e; background: #fff; }
-.ws-arrow {
-  flex-shrink: 0; width: 48px; height: 64px; background: none; border: none;
-  font-size: 28px; color: #c96b7e; cursor: pointer; font-weight: 300;
-  display: flex; align-items: center; justify-content: center;
+.ruler-display {
+  position: absolute; top: 0; left: 0; right: 0; height: 36px;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  z-index: 2; pointer-events: none;
 }
-.ws-arrow:active { background: rgba(201,107,126,0.08); }
-.ws-display {
-  flex: 1; text-align: center; padding: 8px 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  pointer-events: none;
+.ruler-val { font-size: 26px; font-weight: 800; color: #c96b7e; }
+.ruler-unit-lbl { font-size: 13px; font-weight: 600; color: #c96b7e; align-self: flex-end; margin-bottom: 4px; }
+.ruler-scroll {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 44px;
+  overflow-x: scroll; overflow-y: hidden; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
-.ws-val { font-size: 36px; font-weight: 800; color: #1c1c1e; line-height: 1.1; }
-.ws-unit-lbl { font-size: 13px; color: #aeaeb2; font-weight: 600; margin-top: 2px; }
-.ws-hint { text-align: center; font-size: 11px; color: #c8c8cc; margin-top: 8px; }
+.ruler-scroll::-webkit-scrollbar { display: none; }
+.ruler-center-pin {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 2px; height: 44px; background: #c96b7e; border-radius: 1px;
+  z-index: 3; pointer-events: none; opacity: 0.8;
+}
+.ruler-outer::before, .ruler-outer::after {
+  content: ''; position: absolute; bottom: 0; height: 44px; width: 52px;
+  z-index: 2; pointer-events: none;
+}
+.ruler-outer::before { left: 0; background: linear-gradient(to right, #f8f8fa, transparent); }
+.ruler-outer::after { right: 0; background: linear-gradient(to left, #f8f8fa, transparent); }
 
 /* ─── Date strip ────────────────────────────── */
 .date-strip-wrap {
@@ -1057,6 +1262,24 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .detail-weight-note { color: #d49ea8; font-size: 12px; }
 .detail-section-label { font-size: 12px; font-weight: 800; color: #aeaeb2; text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 8px; }
 .detail-empty { text-align: center; color: #c8c8cc; font-size: 14px; padding: 24px 0; }
+.detail-partner-divider {
+  display: flex; align-items: center; gap: 8px; margin: 18px 0 4px;
+  font-size: 11px; font-weight: 700; color: #5b8af0; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.detail-partner-divider::before, .detail-partner-divider::after {
+  content: ''; flex: 1; height: 1px; background: #e0eaff;
+}
+.partner-block { border-left: 3px solid #bfdbfe; padding-left: 8px; }
+.ta-badge {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  background: #5b8af0; color: #fff; border-radius: 8px; padding: 1px 6px;
+  margin-left: 6px; vertical-align: middle;
+}
+.weight-partner { color: #5b8af0; }
+.hero-banner.partner { background: linear-gradient(135deg, #a0b8e8 0%, #5b8af0 55%, #3b68d0 100%); }
+.hero-banner.partner .banner-bg { background: linear-gradient(135deg, #a0b8e8, #3b68d0); }
+.profile-card.partner { border-top: 3px solid #5b8af0; }
+.profile-card.partner .avatar-ring { box-shadow: 0 0 0 4px #fff, 0 4px 20px rgba(91,138,240,0.35); }
 
 .order-block { background: #f9f9fb; border-radius: 16px; padding: 12px; margin-bottom: 8px; }
 .order-block-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
