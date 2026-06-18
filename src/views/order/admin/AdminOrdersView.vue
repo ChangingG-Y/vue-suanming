@@ -95,9 +95,8 @@
 import { ref, computed, onMounted, onUnmounted, defineComponent, h } from 'vue'
 import { getAdminOrders, getAdminOrderById, acceptOrder, serveOrder } from '../../../api/orderAdmin.js'
 import { MEAL_NAMES, MEAL_EMOJIS, STATE_NAMES } from '../../../utils/mealType.js'
+import { absImgUrl } from '../../../api/orderFile.js'
 import { showToast, showImagePreview } from 'vant'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8093/api'
 
 const allOrders = ref([])
 const activeTab = ref('0')
@@ -112,9 +111,7 @@ const activeOrders = computed(() => allOrders.value.filter(o => o.state === 1 ||
 const doneOrders = computed(() => allOrders.value.filter(o => o.state === 3))
 
 function resolveUrl(url) {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return API_BASE + (url.startsWith('/') ? url : '/' + url)
+  return absImgUrl(url)
 }
 
 function formatTime(ts) {

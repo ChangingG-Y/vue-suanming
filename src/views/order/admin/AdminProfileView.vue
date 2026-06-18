@@ -880,7 +880,7 @@ function formatDayLabel(d) {
   return `${y}年${+m}月${+day}日 星期${wd}`
 }
 function getMealTypeName(t) { return ['早饭','午饭','晚饭'][t] ?? '其他' }
-function getStateName(s) { return { 0: '待接单', 1: '已接单', 2: '已完成', 3: '已取消' }[s] ?? '' }
+function getStateName(s) { return { 0: '待接单', 1: '等待开饭', 2: '饭好了', 3: '已完成' }[s] ?? '' }
 
 const slideDir = ref('left')
 let touchStartX = 0
