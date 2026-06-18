@@ -33,14 +33,12 @@
 
     <!-- Profile summary -->
     <div class="profile-card" :class="{ partner: viewPartner }">
-      <div class="profile-card-tools">
-        <button v-if="!viewPartner" class="edit-btn" @click="openEdit">编辑资料</button>
-      </div>
-      <div class="profile-signature" :class="{ muted: !currentProfile.bio }">
-        {{ currentProfile.bio || '还没有写签名' }}
-      </div>
-      <div class="profile-meta-row" v-if="currentProfile.birthday">
+      <div class="profile-info-row">
+        <div class="profile-signature" :class="{ muted: !currentProfile.bio }">
+          {{ currentProfile.bio || '还没有写签名' }}
+        </div>
         <span v-if="currentProfile.birthday" class="profile-birthday">🎂 {{ formatBirthday(currentProfile.birthday) }}</span>
+        <button v-if="!viewPartner" class="edit-btn" @click="openEdit">编辑资料</button>
       </div>
       <div class="stats-row">
         <div class="stat-pill">
@@ -523,11 +521,18 @@
         </template>
       </div>
     </van-popup>
+
+    <ImageCropper
+      :visible="showAvatarCropper"
+      :img-src="avatarCropSrc"
+      @confirm="confirmAvatarCrop"
+      @cancel="cancelAvatarCrop"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { showImagePreview, showToast, showConfirmDialog } from 'vant'
 import { useLayoutConfigStore } from '../../../stores/layoutConfig.js'
 import {
@@ -539,6 +544,7 @@ import {
 import { saveVisit, deleteVisit, saveDiary, deleteDiary, uploadLifePhoto } from '../../../api/orderLifeRecord.js'
 import { absImgUrl } from '../../../api/orderFile.js'
 import { prepareLifePhoto } from '../../../utils/imageUtils.js'
+import ImageCropper from '../../../components/order/ImageCropper.vue'
 
 const layoutStore = useLayoutConfigStore()
 const cfg = computed(() => layoutStore.config)
@@ -642,6 +648,8 @@ const savingVisit = ref(false)
 const savingDiary = ref(false)
 const avatarInputRef = ref(null)
 const bannerInputRef = ref(null)
+const showAvatarCropper = ref(false)
+const avatarCropSrc = ref('')
 const tappedWeightIdx = ref(null)
 const selectedCalDate = ref(null)
 const dayDetail = ref(null)
@@ -853,6 +861,9 @@ async function loadCalendar() {
 }
 
 onMounted(() => { loadSelf(); loadPartner(); loadCalendar() })
+onUnmounted(() => {
+  if (avatarCropSrc.value) URL.revokeObjectURL(avatarCropSrc.value)
+})
 
 function switchToPartner() { viewPartner.value = true; tappedWeightIdx.value = null; selectedCalDate.value = null; loadCalendar() }
 function switchToSelf() { viewPartner.value = false; tappedWeightIdx.value = null; selectedCalDate.value = null; loadCalendar() }
@@ -979,14 +990,25 @@ async function confirmDeleteWeight(r) {
 function triggerAvatarUpload() { avatarInputRef.value?.click() }
 async function onAvatarChange(e) {
   const file = e.target.files?.[0]; if (!file) return
-  const resized = await resizeTo800(file)
-  const fd = new FormData(); fd.append('file', resized, 'avatar.jpg')
+  if (avatarCropSrc.value) URL.revokeObjectURL(avatarCropSrc.value)
+  avatarCropSrc.value = URL.createObjectURL(file)
+  showAvatarCropper.value = true
+  e.target.value = ''
+}
+async function confirmAvatarCrop(blob) {
+  if (!blob) return
+  const fd = new FormData(); fd.append('file', blob, 'avatar.jpg')
   try {
     await uploadAvatar(fd)
     await loadSelf()
     showToast('头像已更新 ✓')
   } catch (err) { showToast(err.message) }
-  e.target.value = ''
+  finally { cancelAvatarCrop() }
+}
+function cancelAvatarCrop() {
+  showAvatarCropper.value = false
+  if (avatarCropSrc.value) URL.revokeObjectURL(avatarCropSrc.value)
+  avatarCropSrc.value = ''
 }
 function triggerBannerUpload() { bannerInputRef.value?.click() }
 async function onBannerChange(e) {
@@ -1195,7 +1217,7 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .profile-card {
   position: relative; z-index: 1;
   background: #fff; margin: 0 0 12px; border-radius: 0 0 14px 14px;
-  padding: 48px 16px 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+  padding: 40px 16px 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.04);
 }
 .avatar-ring {
   flex-shrink: 0; position: relative;
@@ -1231,16 +1253,22 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
   font-size: 12px; font-weight: 700; cursor: pointer;
 }
 .edit-btn:active { background: #f3f3f6; }
-.profile-card-tools {
-  position: absolute; top: 14px; right: 16px;
-  display: flex; justify-content: flex-end;
+.profile-info-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 2px 0 14px;
+  min-width: 0;
 }
 .profile-signature {
+  flex: 1;
+  min-width: 0;
   color: #6d6d72;
   font-size: 14px;
   line-height: 1.55;
-  margin-bottom: 11px;
-  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .profile-signature.muted { color: #aeaeb2; }
 .profile-meta-row {
@@ -1249,9 +1277,10 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 }
 .profile-bio { font-size: 13px; color: #6d6d72; line-height: 1.5; }
 .profile-birthday {
+  flex-shrink: 0;
   display: inline-flex; align-items: center; gap: 3px;
   font-size: 12px; color: #6d6d72;
-  background: #f7f7f9; border-radius: 999px; padding: 5px 9px;
+  padding: 0;
 }
 .stats-row {
   display: flex; align-items: center;
