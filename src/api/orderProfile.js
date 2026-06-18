@@ -5,6 +5,9 @@ export const updateMyProfile = (data) => req.put('/order/profile/me', data)
 export const uploadAvatar = (formData) => req.post('/order/profile/avatar', formData, {
   headers: { 'Content-Type': 'multipart/form-data' }
 })
+export const uploadBanner = (formData) => req.post('/order/profile/banner', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+})
 
 export const getWeightRecords = (days = 90) => req.get('/order/profile/weight', { params: { days } })
 export const saveWeight = (data) => req.post('/order/profile/weight', data)

@@ -3,36 +3,48 @@
     <!-- Hero banner -->
     <div class="hero-banner" :class="{ partner: viewPartner }">
       <div class="banner-inner-clip">
-        <div class="banner-bg"></div>
+        <img v-if="currentProfile.bannerUrl" class="banner-img" :src="absImgUrl(currentProfile.bannerUrl)" />
+        <div v-else class="banner-bg"></div>
         <div class="banner-deco d1"></div>
         <div class="banner-deco d2"></div>
         <div class="banner-deco d3"></div>
       </div>
       <button v-if="!viewPartner" class="peek-btn" @click="switchToPartner">看看TA 👀</button>
       <button v-else class="peek-btn back" @click="switchToSelf">← 我的</button>
+      <input ref="bannerInputRef" type="file" accept="image/*" style="display:none" @change="onBannerChange" />
       <button class="logout-btn-hero" @click="doLogout" title="退出登录">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
         </svg>
       </button>
+
+      <div class="hero-profile-row">
+        <div class="avatar-ring" :class="{ clickable: !viewPartner }" @click="!viewPartner && triggerAvatarUpload()">
+          <img v-if="currentProfile.avatarUrl" :src="absImgUrl(currentProfile.avatarUrl)" class="avatar-img" />
+          <div v-else class="avatar-placeholder">{{ (currentProfile.nickname || '?')[0] }}</div>
+          <div v-if="!viewPartner" class="avatar-edit-badge">📷</div>
+        </div>
+        <input v-if="!viewPartner" ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="onAvatarChange" />
+        <div class="hero-profile-copy">
+          <div class="profile-name">
+            {{ currentProfile.nickname || '未设置昵称' }}
+            <span v-if="viewPartner" class="ta-badge">TA</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Profile card -->
+    <!-- Profile summary -->
     <div class="profile-card" :class="{ partner: viewPartner }">
-      <div class="avatar-ring" :class="{ clickable: !viewPartner }" @click="!viewPartner && triggerAvatarUpload()">
-        <img v-if="currentProfile.avatarUrl" :src="absImgUrl(currentProfile.avatarUrl)" class="avatar-img" />
-        <div v-else class="avatar-placeholder">{{ (currentProfile.nickname || '?')[0] }}</div>
-        <div v-if="!viewPartner" class="avatar-edit-badge">📷</div>
-      </div>
-      <input v-if="!viewPartner" ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="onAvatarChange" />
-      <div class="profile-name-row">
-        <span class="profile-name">
-          {{ currentProfile.nickname || '未设置昵称' }}
-          <span v-if="viewPartner" class="ta-badge">TA</span>
-        </span>
+      <div class="profile-card-tools">
         <button v-if="!viewPartner" class="edit-btn" @click="openEdit">编辑资料</button>
       </div>
-      <div v-if="currentProfile.bio" class="profile-bio">{{ currentProfile.bio }}</div>
+      <div class="profile-signature" :class="{ muted: !currentProfile.bio }">
+        {{ currentProfile.bio || '还没有写签名' }}
+      </div>
+      <div class="profile-meta-row" v-if="currentProfile.birthday">
+        <span v-if="currentProfile.birthday" class="profile-birthday">🎂 {{ formatBirthday(currentProfile.birthday) }}</span>
+      </div>
       <div class="stats-row">
         <div class="stat-pill">
           <div class="stat-num">{{ currentProfile.height ?? '—' }}</div>
@@ -110,7 +122,7 @@
         <span class="section-title">📅 {{ viewPartner ? 'TA 的' : '' }}生活日历</span>
         <div class="month-nav">
           <button class="month-btn" @click="changeMonth(-1)">‹</button>
-          <span class="month-label">{{ calYear }}年{{ calMonth }}月</span>
+          <span class="month-label clickable" @click="openMonthPicker">{{ calYear }}年{{ calMonth }}月</span>
           <button class="month-btn" @click="changeMonth(1)">›</button>
         </div>
       </div>
@@ -119,9 +131,13 @@
         <span class="legend-item"><span class="legend-emoji">{{ cfg.calEmojiDining }}</span>{{ cfg.calLabelDining }}</span>
         <span class="legend-item"><span class="legend-emoji">{{ cfg.calEmojiDiary }}</span>{{ cfg.calLabelDiary }}</span>
       </div>
-      <div class="calendar-grid">
+      <div class="cal-weekday-row">
         <div class="cal-weekday" v-for="(d, i) in ['日','一','二','三','四','五','六']" :key="d"
              :class="{ 'wd-sun': i === 0, 'wd-sat': i === 6 }">{{ d }}</div>
+      </div>
+      <div class="cal-slide-wrap" @touchstart.passive="onCalTouchStart" @touchend.passive="onCalTouchEnd">
+        <Transition :name="'cal-slide-' + slideDir">
+        <div class="calendar-grid" :key="`${calYear}-${calMonth}`">
         <div v-for="n in calStartBlank" :key="'b'+n" class="cal-cell-empty"></div>
         <div
           v-for="day in calendarDays" :key="day.date"
@@ -132,7 +148,11 @@
             'selected': selectedCalDate === day.date,
             'cal-sun': getDayOfWeek(day.date) === 0,
             'cal-sat': getDayOfWeek(day.date) === 6,
-            'cal-holiday-day': !!HOLIDAYS[day.date]
+            'cal-holiday-day': !!HOLIDAYS[day.date],
+            'cal-workday': !!WORKDAYS[day.date],
+            'cal-special-day': !!getSpecialDay(day.date),
+            'cal-birthday-user': isBirthdayUser(day.date),
+            'cal-birthday-admin': isBirthdayAdmin(day.date),
           }"
           @click="selectCalDay(day)"
         >
@@ -143,8 +163,14 @@
             <span v-if="day.hasDiary">{{ cfg.calEmojiDiary }}</span>
           </div>
           <span v-if="HOLIDAYS[day.date]" class="cal-holiday">{{ HOLIDAYS[day.date] }}</span>
+          <span v-else-if="WORKDAYS[day.date]" class="cal-workday-label">班😭</span>
+          <span v-else-if="getSpecialDay(day.date)" class="cal-special">{{ getSpecialDay(day.date) }}</span>
+          <span v-if="isBirthdayUser(day.date)" class="cal-bday-label user">🎂生日</span>
+          <span v-else-if="isBirthdayAdmin(day.date)" class="cal-bday-label admin">🎂TA生日</span>
           <span v-if="day.weight" class="cal-kg" :class="{ 'partner-kg': viewPartner }">{{ displayWeight(day.weight) }}</span>
         </div>
+        </div>
+        </Transition>
       </div>
     </div>
 
@@ -195,6 +221,22 @@
       <div class="sheet-handle"></div>
       <div class="sheet-inner">
         <div class="sheet-title">编辑资料</div>
+        <!-- 头像 + 背景预览 -->
+        <div class="edit-appearance">
+          <div class="edit-avatar-col" @click="triggerAvatarUpload()">
+            <div class="edit-avatar-ring">
+              <img v-if="profile.avatarUrl" :src="absImgUrl(profile.avatarUrl)" class="edit-avatar-img" />
+              <div v-else class="edit-avatar-ph">{{ (profile.nickname || '?')[0] }}</div>
+            </div>
+            <div class="edit-appear-label">换头像</div>
+          </div>
+          <div class="edit-banner-col" @click="triggerBannerUpload()">
+            <div class="edit-banner-preview" :style="profile.bannerUrl ? { backgroundImage: `url(${absImgUrl(profile.bannerUrl)})` } : {}">
+              <span v-if="!profile.bannerUrl" class="edit-banner-ph">🖼️</span>
+            </div>
+            <div class="edit-appear-label">换背景</div>
+          </div>
+        </div>
         <div class="form-field">
           <div class="form-label">昵称</div>
           <input v-model="editForm.nickname" class="form-input" placeholder="输入昵称" />
@@ -202,6 +244,12 @@
         <div class="form-field">
           <div class="form-label">身高 (cm)</div>
           <input v-model="editForm.height" class="form-input" type="number" placeholder="如 165" />
+        </div>
+        <div class="form-field">
+          <div class="form-label">生日</div>
+          <div class="birthday-display" :class="{ placeholder: !editForm.birthday }" @click="openBirthdayPicker">
+            {{ editForm.birthday ? formatBirthday(editForm.birthday) : '点击选择生日' }}
+          </div>
         </div>
         <div class="form-field">
           <div class="form-label">个人签名</div>
@@ -212,6 +260,37 @@
           <button class="s-confirm" :disabled="saving" @click="saveProfile">{{ saving ? '保存中…' : '保存' }}</button>
         </div>
       </div>
+    </van-popup>
+
+    <!-- 年月选择器 -->
+    <van-popup v-model:show="showMonthPicker" round position="center" :style="{ width: '82vw', borderRadius: '24px', overflow: 'hidden' }">
+      <div class="mpicker-wrap">
+        <div class="mpicker-header">
+          <button class="mpicker-arrow" @click="pickerYear--">‹</button>
+          <span class="mpicker-year">{{ pickerYear }}年</span>
+          <button class="mpicker-arrow" @click="pickerYear++">›</button>
+        </div>
+        <div class="mpicker-months">
+          <button v-for="m in 12" :key="m" class="mpicker-month"
+            :class="{ active: m === pickerMonth && pickerYear === calYear }"
+            @click="selectPickerMonth(m)">{{ m }}月</button>
+        </div>
+        <div class="mpicker-footer">
+          <button class="mpicker-today" @click="jumpToCurrentMonth">今月</button>
+        </div>
+      </div>
+    </van-popup>
+
+    <!-- 生日选择器 -->
+    <van-popup v-model:show="showBirthdayPicker" round position="bottom">
+      <van-date-picker
+        v-model="pickerBirthdayVal"
+        title="选择生日"
+        :min-date="new Date(1940, 0, 1)"
+        :max-date="new Date(2010, 11, 31)"
+        @confirm="onBirthdayConfirm"
+        @cancel="showBirthdayPicker = false"
+      />
     </van-popup>
 
     <!-- Weight -->
@@ -355,11 +434,20 @@
             <button class="detail-close" @click="showDayDetail = false">✕</button>
           </div>
 
-          <div v-if="dayDetail.weight" class="detail-weight-pill">
-            ⚖️ <strong>{{ displayWeight(dayDetail.weight) }} {{ weightUnit === 'kg' ? 'kg' : '斤' }}</strong>
-            <span v-if="dayDetail.weightNote" class="detail-weight-note">· {{ dayDetail.weightNote }}</span>
+          <!-- 体重：双方并排显示 -->
+          <div v-if="dayDetail.weight != null || dayDetail.partnerWeight != null" class="detail-weight-row">
+            <div v-if="dayDetail.weight != null" class="detail-weight-pill">
+              ⚖️ <strong>{{ displayWeight(dayDetail.weight) }} {{ weightUnit === 'kg' ? 'kg' : '斤' }}</strong>
+              <span class="weight-author">{{ dayDetail.myNickname }}</span>
+              <span v-if="dayDetail.weightNote" class="detail-weight-note">· {{ dayDetail.weightNote }}</span>
+            </div>
+            <div v-if="dayDetail.partnerWeight != null" class="detail-weight-pill partner">
+              ⚖️ <strong>{{ displayWeight(dayDetail.partnerWeight) }} {{ weightUnit === 'kg' ? 'kg' : '斤' }}</strong>
+              <span class="weight-author">{{ dayDetail.partnerNickname }}</span>
+            </div>
           </div>
 
+          <!-- 做饭/订单：整个租户共享 -->
           <template v-if="dayDetail.orders?.length">
             <div class="detail-section-label">{{ cfg.calEmojiCooking }} {{ cfg.calLabelCooking }}</div>
             <div v-for="order in dayDetail.orders" :key="order.id" class="order-block">
@@ -381,14 +469,16 @@
             </div>
           </template>
 
-          <template v-if="dayDetail.visits?.length">
+          <!-- 美食打卡：自己和伴侣的合并，isOwn=true 才能删 -->
+          <template v-if="dayDetail.allVisits?.length">
             <div class="detail-section-label">{{ cfg.calEmojiDining }} {{ cfg.calLabelDining }}</div>
-            <div v-for="v in dayDetail.visits" :key="v.id" class="visit-block">
+            <div v-for="v in dayDetail.allVisits" :key="v.id" class="visit-block" :class="{ 'partner-block': !v.isOwn }">
               <div class="vb-head">
                 <span class="vb-meal">{{ getMealTypeName(v.mealType) }}</span>
                 <span class="vb-name">{{ v.restaurantName }}</span>
                 <span v-if="v.score" class="vb-score">{{ '★'.repeat(Math.min(5, Math.max(0, Math.round(v.score)))) }}</span>
-                <button v-if="!viewPartner" class="vb-del" @click="confirmDeleteVisit(v, dayDetail.date)">✕</button>
+                <span v-if="!v.isOwn" class="vb-author">{{ v.authorNickname }}</span>
+                <button v-if="v.isOwn && !viewPartner" class="vb-del" @click="confirmDeleteVisit(v, dayDetail.date)">✕</button>
               </div>
               <div v-if="v.content" class="vb-text">"{{ v.content }}"</div>
               <div v-if="v.imageUrls?.length" class="rev-imgs">
@@ -398,52 +488,23 @@
             <button v-if="!viewPartner" class="more-btn" @click="openVisitForm(dayDetail.date)">+ 再添一条</button>
           </template>
 
-          <template v-if="dayDetail.diary">
+          <!-- 日记：自己和伴侣的合并，isOwn=true 才能编辑删除 -->
+          <template v-if="dayDetail.allDiaries?.length">
             <div class="detail-section-label">{{ cfg.calEmojiDiary }} {{ cfg.calLabelDiary }}</div>
-            <div class="diary-block">
-              <p class="diary-text">{{ dayDetail.diary.content }}</p>
-              <div v-if="dayDetail.diary.imageUrls?.length" class="rev-imgs" style="margin-top:8px">
-                <img v-for="(img, i) in dayDetail.diary.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(dayDetail.diary.imageUrls.map(absImgUrl), i)" />
+            <div v-for="d in dayDetail.allDiaries" :key="d.id" class="diary-block" :class="{ 'partner-block': !d.isOwn }">
+              <div v-if="!d.isOwn" class="diary-author">{{ d.authorNickname }}</div>
+              <p class="diary-text">{{ d.content }}</p>
+              <div v-if="d.imageUrls?.length" class="rev-imgs" style="margin-top:8px">
+                <img v-for="(img, i) in d.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(d.imageUrls.map(absImgUrl), i)" />
               </div>
-              <div v-if="!viewPartner" class="diary-actions">
-                <button class="da-btn" @click="editDiary(dayDetail)">✏️ 编辑</button>
-                <button class="da-btn del" @click="confirmDeleteDiary(dayDetail.diary, dayDetail.date)">🗑 删除</button>
+              <div v-if="d.isOwn && !viewPartner" class="diary-actions">
+                <button class="da-btn" @click="editDiary(d, dayDetail.date)">✏️ 编辑</button>
+                <button class="da-btn del" @click="confirmDeleteDiary(d, dayDetail.date)">🗑 删除</button>
               </div>
             </div>
           </template>
 
-          <!-- Partner's records section -->
-          <template v-if="dayDetail.partnerNickname && (dayDetail.partnerVisits?.length || dayDetail.partnerDiary || dayDetail.partnerWeight != null)">
-            <div class="detail-partner-divider">{{ dayDetail.partnerNickname }} 的记录</div>
-            <template v-if="dayDetail.partnerVisits?.length">
-              <div class="detail-section-label">{{ cfg.calEmojiDining }} {{ cfg.calLabelDining }}</div>
-              <div v-for="v in dayDetail.partnerVisits" :key="v.id" class="visit-block partner-block">
-                <div class="vb-head">
-                  <span class="vb-meal">{{ getMealTypeName(v.mealType) }}</span>
-                  <span class="vb-name">{{ v.restaurantName }}</span>
-                  <span v-if="v.score" class="vb-score">{{ '★'.repeat(Math.min(5, Math.max(0, Math.round(v.score)))) }}</span>
-                </div>
-                <div v-if="v.content" class="vb-text">"{{ v.content }}"</div>
-                <div v-if="v.imageUrls?.length" class="rev-imgs">
-                  <img v-for="(img, i) in v.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(v.imageUrls.map(absImgUrl), i)" />
-                </div>
-              </div>
-            </template>
-            <template v-if="dayDetail.partnerDiary">
-              <div class="detail-section-label">{{ cfg.calEmojiDiary }} {{ cfg.calLabelDiary }}</div>
-              <div class="diary-block partner-block">
-                <p class="diary-text">{{ dayDetail.partnerDiary.content }}</p>
-                <div v-if="dayDetail.partnerDiary.imageUrls?.length" class="rev-imgs" style="margin-top:8px">
-                  <img v-for="(img, i) in dayDetail.partnerDiary.imageUrls" :key="i" :src="absImgUrl(img)" class="rev-thumb" @click="previewImg(dayDetail.partnerDiary.imageUrls.map(absImgUrl), i)" />
-                </div>
-              </div>
-            </template>
-            <div v-if="dayDetail.partnerWeight != null" class="detail-weight-pill" style="background:#eff6ff;color:#3b82f6">
-              ⚖️ <strong>{{ displayWeight(dayDetail.partnerWeight) }} {{ weightUnit === 'kg' ? 'kg' : '斤' }}</strong>
-            </div>
-          </template>
-
-          <div v-if="!dayDetail.orders?.length && !dayDetail.visits?.length && !dayDetail.diary && !dayDetail.weight && !dayDetail.partnerVisits?.length && !dayDetail.partnerDiary" class="detail-empty">这天还没有记录</div>
+          <div v-if="!dayDetail.orders?.length && !dayDetail.allVisits?.length && !dayDetail.allDiaries?.length && dayDetail.weight == null && dayDetail.partnerWeight == null" class="detail-empty">这天还没有记录</div>
 
           <div v-if="!viewPartner" class="detail-add-row">
             <button class="dab dining" @click="openVisitForm(dayDetail.date); showDayDetail = false">{{ cfg.calEmojiDining }}<br><span>{{ cfg.calLabelDining }}</span></button>
@@ -467,10 +528,10 @@ import { showImagePreview, showToast, showConfirmDialog } from 'vant'
 import { useLayoutConfigStore } from '../../stores/layoutConfig.js'
 import { useOrderAuthStore } from '../../stores/orderAuth.js'
 import {
-  getMyProfile, updateMyProfile, uploadAvatar,
+  getMyProfile, updateMyProfile, uploadAvatar, uploadBanner,
   getWeightRecords, saveWeight, deleteWeight,
   getCalendar, getDayDetail,
-  getPartnerProfile, getPartnerWeight
+  getPartnerProfile, getPartnerWeight, getPartnerCalendar, getPartnerDayDetail
 } from '../../api/orderProfile.js'
 import { saveVisit, deleteVisit, saveDiary, deleteDiary, uploadLifePhoto } from '../../api/orderLifeRecord.js'
 import { absImgUrl } from '../../api/orderFile.js'
@@ -488,31 +549,140 @@ function doLogout() {
 }
 
 // 法定节假日 (2025-2026)
+// 法定节假日 2025-2028（含七夕、中秋）
 const HOLIDAYS = {
-  '2025-01-01':'元旦','2025-01-28':'春节','2025-01-29':'春节','2025-01-30':'春节',
-  '2025-01-31':'春节','2025-02-01':'春节','2025-02-02':'春节','2025-02-03':'春节','2025-02-04':'春节',
+  // ── 2025 ──
+  '2025-01-01':'元旦',
+  '2025-01-28':'春节','2025-01-29':'春节','2025-01-30':'春节','2025-01-31':'春节',
+  '2025-02-01':'春节','2025-02-02':'春节','2025-02-03':'春节','2025-02-04':'春节',
   '2025-04-04':'清明','2025-04-05':'清明','2025-04-06':'清明',
   '2025-05-01':'劳动','2025-05-02':'劳动','2025-05-03':'劳动','2025-05-04':'劳动','2025-05-05':'劳动',
   '2025-05-31':'端午','2025-06-01':'端午','2025-06-02':'端午',
+  '2025-08-29':'七夕',
   '2025-10-01':'国庆','2025-10-02':'国庆','2025-10-03':'国庆','2025-10-04':'国庆',
-  '2025-10-05':'国庆','2025-10-06':'国庆','2025-10-07':'国庆',
+  '2025-10-05':'国庆','2025-10-06':'中秋','2025-10-07':'国庆',
+  // ── 2026 ──
   '2026-01-01':'元旦',
   '2026-02-17':'春节','2026-02-18':'春节','2026-02-19':'春节','2026-02-20':'春节',
   '2026-02-21':'春节','2026-02-22':'春节','2026-02-23':'春节','2026-02-24':'春节',
   '2026-04-04':'清明','2026-04-05':'清明','2026-04-06':'清明',
   '2026-05-01':'劳动','2026-05-02':'劳动','2026-05-03':'劳动','2026-05-04':'劳动','2026-05-05':'劳动',
   '2026-06-19':'端午','2026-06-20':'端午','2026-06-21':'端午',
+  '2026-08-19':'七夕',
+  '2026-09-23':'中秋','2026-09-24':'中秋','2026-09-25':'中秋',
   '2026-10-01':'国庆','2026-10-02':'国庆','2026-10-03':'国庆','2026-10-04':'国庆',
   '2026-10-05':'国庆','2026-10-06':'国庆','2026-10-07':'国庆',
+  // ── 2027 ──
+  '2027-01-01':'元旦',
+  '2027-02-06':'春节','2027-02-07':'春节','2027-02-08':'春节','2027-02-09':'春节',
+  '2027-02-10':'春节','2027-02-11':'春节','2027-02-12':'春节',
+  '2027-04-04':'清明','2027-04-05':'清明','2027-04-06':'清明',
+  '2027-05-01':'劳动','2027-05-02':'劳动','2027-05-03':'劳动','2027-05-04':'劳动','2027-05-05':'劳动',
+  '2027-05-20':'端午','2027-05-21':'端午','2027-05-22':'端午',
+  '2027-08-09':'七夕',
+  '2027-10-01':'国庆','2027-10-02':'国庆','2027-10-03':'国庆','2027-10-04':'国庆',
+  '2027-10-05':'国庆','2027-10-06':'国庆','2027-10-07':'国庆',
+  '2027-10-16':'中秋','2027-10-17':'中秋','2027-10-18':'中秋',
+  // ── 2028 ──
+  '2028-01-01':'元旦','2028-01-02':'元旦','2028-01-03':'元旦',
+  '2028-01-26':'春节','2028-01-27':'春节','2028-01-28':'春节','2028-01-29':'春节',
+  '2028-01-30':'春节','2028-01-31':'春节','2028-02-01':'春节',
+  '2028-04-04':'清明','2028-04-05':'清明',
+  '2028-05-01':'劳动','2028-05-02':'劳动','2028-05-03':'劳动','2028-05-04':'劳动','2028-05-05':'劳动',
+  '2028-06-08':'端午','2028-06-09':'端午','2028-06-10':'端午',
+  '2028-08-27':'七夕',
+  '2028-09-03':'中秋','2028-09-04':'中秋','2028-09-05':'中秋',
+  '2028-10-01':'国庆','2028-10-02':'国庆','2028-10-03':'国庆','2028-10-04':'国庆',
+  '2028-10-05':'国庆','2028-10-06':'国庆','2028-10-07':'国庆',
+}
+
+// 调休（补班日，本是周末但需上班）
+const WORKDAYS = {
+  // 2025（已公布）
+  '2025-01-26':'调休','2025-02-08':'调休',
+  '2025-04-27':'调休',
+  '2025-09-28':'调休','2025-10-11':'调休',
+  // 2026（预计）
+  '2026-02-15':'调休','2026-02-28':'调休',
+  '2026-04-26':'调休',
+  '2026-09-27':'调休','2026-10-10':'调休',
+  // 2027（预估）
+  '2027-01-31':'调休','2027-02-20':'调休',
+  '2027-04-25':'调休',
+  '2027-10-09':'调休','2027-10-23':'调休',
+  // 2028（预估）
+  '2028-01-23':'调休',
+  '2028-04-23':'调休',
+  '2028-09-30':'调休','2028-10-14':'调休',
+}
+
+// 每年固定浪漫节日（按 MM-DD 年度匹配）
+const SPECIAL_DAYS = {
+  '02-14': '情人节 ♥',
+  '05-20': '520 ♥',
+  '12-25': '圣诞 ✦',
 }
 
 function getDayOfWeek(dateStr) {
   return new Date(dateStr + 'T00:00:00').getDay()
 }
 
+function getSpecialDay(date) {
+  return SPECIAL_DAYS[date.slice(5)] || null
+}
+
+function getBirthdayMD(bday) {
+  if (!bday) return null
+  const p = bday.split('-')
+  return p.length === 3 ? `${p[1]}-${p[2]}` : (p.length === 2 ? bday : null)
+}
+
+function formatBirthday(bday) {
+  if (!bday) return ''
+  const p = bday.split('-')
+  if (p.length === 3) return `${parseInt(p[1])}月${parseInt(p[2])}日`
+  if (p.length === 2) return `${parseInt(p[0])}月${parseInt(p[1])}日`
+  return bday
+}
+
 const viewPartner = ref(false)
-const profile = ref({ nickname: '', avatarUrl: '', height: null, bio: '', currentWeight: null, currentWeightDate: null })
-const partnerProfile = ref({ nickname: '', avatarUrl: '', height: null, bio: '', currentWeight: null, currentWeightDate: null })
+const profile = ref({ nickname: '', avatarUrl: '', bannerUrl: null, height: null, bio: '', birthday: null, currentWeight: null, currentWeightDate: null })
+const partnerProfile = ref({ nickname: '', avatarUrl: '', bannerUrl: null, height: null, bio: '', birthday: null, currentWeight: null, currentWeightDate: null })
+
+// 月份选择器
+const showMonthPicker = ref(false)
+const pickerYear = ref(new Date().getFullYear())
+const pickerMonth = ref(new Date().getMonth() + 1)
+function openMonthPicker() { pickerYear.value = calYear.value; pickerMonth.value = calMonth.value; showMonthPicker.value = true }
+function selectPickerMonth(m) {
+  const newTotal = pickerYear.value * 12 + m, curTotal = calYear.value * 12 + calMonth.value
+  slideDir.value = newTotal >= curTotal ? 'left' : 'right'
+  calYear.value = pickerYear.value; calMonth.value = m; pickerMonth.value = m; loadCalendar(); showMonthPicker.value = false
+}
+function jumpToCurrentMonth() {
+  const now = new Date()
+  const newTotal = now.getFullYear() * 12 + now.getMonth() + 1, curTotal = calYear.value * 12 + calMonth.value
+  slideDir.value = newTotal >= curTotal ? 'left' : 'right'
+  pickerYear.value = now.getFullYear(); calYear.value = now.getFullYear(); calMonth.value = now.getMonth() + 1; pickerMonth.value = now.getMonth() + 1; loadCalendar(); showMonthPicker.value = false
+}
+
+// 生日选择器
+const showBirthdayPicker = ref(false)
+const pickerBirthdayVal = ref(['1995', '01', '01'])
+function openBirthdayPicker() {
+  if (editForm.value.birthday) {
+    const parts = editForm.value.birthday.split('-')
+    pickerBirthdayVal.value = [parts[0], parts[1], parts[2]]
+  } else {
+    pickerBirthdayVal.value = ['1995', '01', '01']
+  }
+  showBirthdayPicker.value = true
+}
+function onBirthdayConfirm({ selectedValues }) { editForm.value.birthday = selectedValues.join('-'); showBirthdayPicker.value = false }
+
+// 生日日历高亮：普通用户=红色，管理员/伴侣=蓝色
+function isBirthdayUser(date) { return getBirthdayMD(profile.value.birthday) === date.slice(5) }
+function isBirthdayAdmin(date) { return getBirthdayMD(partnerProfile.value.birthday) === date.slice(5) }
 const weightRecords = ref([])
 const partnerWeightRecords = ref([])
 const calendarDays = ref([])
@@ -535,6 +705,7 @@ const savingWeight = ref(false)
 const savingVisit = ref(false)
 const savingDiary = ref(false)
 const avatarInputRef = ref(null)
+const bannerInputRef = ref(null)
 const tappedWeightIdx = ref(null)
 const selectedCalDate = ref(null)
 const dayDetail = ref(null)
@@ -657,7 +828,7 @@ watch(() => showWeightModal.value, (show) => {
 })
 // ─────────────────────────────────────────────────────────────────────────
 
-const editForm = ref({ nickname: '', height: '', bio: '' })
+const editForm = ref({ nickname: '', height: '', bio: '', birthday: '' })
 const weightForm = ref({ recordDate: todayStr, weight: '60', note: '' })
 const visitForm = ref({ visitDate: todayStr, mealType: 1, restaurantName: '', score: 5, content: '' })
 const diaryForm = ref({ diaryDate: todayStr, content: '' })
@@ -726,7 +897,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
 async function loadProfile() { try { profile.value = await getMyProfile() } catch {} }
 async function loadWeights() { try { weightRecords.value = await getWeightRecords(90) } catch {} }
-async function loadCalendar() { try { calendarDays.value = await getCalendar(calYear.value, calMonth.value) } catch {} }
+async function loadCalendar() { try { calendarDays.value = viewPartner.value ? await getPartnerCalendar(calYear.value, calMonth.value) : await getCalendar(calYear.value, calMonth.value) } catch {} }
 async function loadPartnerProfile() { try { const p = await getPartnerProfile(); if (p) partnerProfile.value = p } catch {} }
 async function loadPartnerWeights() { try { partnerWeightRecords.value = await getPartnerWeight(90) } catch {} }
 
@@ -749,7 +920,15 @@ function formatDayLabel(d) {
 function getMealTypeName(t) { return ['早饭','午饭','晚饭'][t] ?? '其他' }
 function getStateName(s) { return { 0: '待接单', 1: '等待开饭', 2: '饭好了', 3: '已完成' }[s] ?? '' }
 
+const slideDir = ref('left')
+let touchStartX = 0
+function onCalTouchStart(e) { touchStartX = e.touches[0].clientX }
+function onCalTouchEnd(e) {
+  const delta = e.changedTouches[0].clientX - touchStartX
+  if (Math.abs(delta) > 50) { delta < 0 ? changeMonth(1) : changeMonth(-1) }
+}
 function changeMonth(delta) {
+  slideDir.value = delta > 0 ? 'left' : 'right'
   let m = calMonth.value + delta, y = calYear.value
   if (m < 1) { m = 12; y-- }
   if (m > 12) { m = 1; y++ }
@@ -762,7 +941,7 @@ async function selectCalDay(day) {
   if (!hasData) {
     // 伴侣视角下空白日期不弹出
     if (!viewPartner.value) {
-      dayDetail.value = { date: day.date, orders: [], visits: [], diary: null, weight: null, weightNote: null }
+      dayDetail.value = { date: day.date, orders: [], allVisits: [], allDiaries: [], weight: null, weightNote: null }
       showDayDetail.value = true
     }
     return
@@ -770,7 +949,7 @@ async function selectCalDay(day) {
   dayDetail.value = null
   const toast = showToast({ type: 'loading', message: '加载中…', forbidClick: false, duration: 0 })
   try {
-    dayDetail.value = await getDayDetail(day.date)
+    dayDetail.value = viewPartner.value ? await getPartnerDayDetail(day.date) : await getDayDetail(day.date)
     if (dayDetail.value) showDayDetail.value = true
   } catch (e) {
     showToast(e.message || '加载失败')
@@ -828,6 +1007,32 @@ async function onAvatarChange(e) {
   } catch (err) { showToast(err.message) }
   e.target.value = ''
 }
+function triggerBannerUpload() { bannerInputRef.value?.click() }
+async function onBannerChange(e) {
+  const file = e.target.files?.[0]; if (!file) return
+  const resized = await resizeBanner(file)
+  const fd = new FormData(); fd.append('file', resized, 'banner.jpg')
+  try {
+    await uploadBanner(fd)
+    await loadProfile()
+    showToast('背景已更新 ✓')
+  } catch (err) { showToast(err.message) }
+  e.target.value = ''
+}
+function resizeBanner(file) {
+  return new Promise(resolve => {
+    const img = new Image(), url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const maxW = 1200, ratio = Math.min(1, maxW / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * ratio)
+      canvas.height = Math.round(img.height * ratio)
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(resolve, 'image/jpeg', 0.88)
+    }; img.src = url
+  })
+}
 function resizeTo800(file) {
   return new Promise(resolve => {
     const img = new Image(), url = URL.createObjectURL(file)
@@ -842,13 +1047,13 @@ function resizeTo800(file) {
 }
 
 function openEdit() {
-  editForm.value = { nickname: profile.value.nickname || '', height: profile.value.height || '', bio: profile.value.bio || '' }
+  editForm.value = { nickname: profile.value.nickname || '', height: profile.value.height || '', bio: profile.value.bio || '', birthday: profile.value.birthday || '' }
   showEditModal.value = true
 }
 async function saveProfile() {
   saving.value = true
   try {
-    await updateMyProfile({ nickname: editForm.value.nickname || null, height: editForm.value.height ? parseFloat(editForm.value.height) : null, bio: editForm.value.bio || null })
+    await updateMyProfile({ nickname: editForm.value.nickname || null, height: editForm.value.height ? parseFloat(editForm.value.height) : null, bio: editForm.value.bio || null, birthday: editForm.value.birthday || null })
     showEditModal.value = false; showToast('保存成功 ✓'); await loadProfile()
   } catch (e) { showToast(e.message) } finally { saving.value = false }
 }
@@ -886,8 +1091,8 @@ function openDiaryForm(date) {
   diaryForm.value = { diaryDate: date || todayStr, content: '' }
   diaryPhotoStage.value = []; showDiaryModal.value = true
 }
-function editDiary(detail) {
-  diaryForm.value = { diaryDate: detail.date, content: detail.diary.content || '' }
+function editDiary(d, date) {
+  diaryForm.value = { diaryDate: date, content: d.content || '' }
   diaryPhotoStage.value = []; showDayDetail.value = false; showDiaryModal.value = true
 }
 async function onDiaryPhotoChange(e) {
@@ -920,21 +1125,45 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 
 <style scoped>
 /* ─── Page ─────────────────────────────────── */
-.profile-page { min-height: 100vh; background: #f2f2f7; padding-bottom: 100px; }
+.profile-page { min-height: 100vh; background: #ededf2; padding-bottom: 100px; }
 
 /* ─── Hero banner ───────────────────────────── */
 .hero-banner {
-  position: relative; height: 150px;
-  background: linear-gradient(135deg, #e8a0b0 0%, #c96b7e 55%, #a84d65 100%);
+  position: relative; height: 248px;
+  background: #d7a1ac;
   transition: background 0.4s;
 }
 .banner-inner-clip {
   position: absolute; inset: 0; overflow: hidden; border-radius: 0;
 }
+.banner-inner-clip::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.04) 42%, rgba(0,0,0,0.52) 100%),
+    linear-gradient(to right, rgba(0,0,0,0.22), transparent 48%);
+  pointer-events: none;
+}
 .banner-bg {
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 30% 60%, rgba(255,255,255,0.12) 0%, transparent 60%);
+  background:
+    radial-gradient(ellipse at 30% 60%, rgba(255,255,255,0.16) 0%, transparent 60%),
+    linear-gradient(135deg, #e5a0ad 0%, #c96b7e 56%, #8f4c61 100%);
 }
+.banner-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+}
+/* 编辑资料 - 头像和背景 */
+.edit-appearance { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 20px; }
+.edit-avatar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.edit-avatar-ring { width: 68px; height: 68px; border-radius: 50%; overflow: hidden; border: 2.5px solid #f0d0d8; background: #f9eef1; flex-shrink: 0; }
+.edit-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.edit-avatar-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; color: #c96b7e; }
+.edit-banner-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.edit-banner-preview { width: 100%; height: 68px; border-radius: 12px; background: #f2f2f7; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; border: 1.5px dashed #d0d0d8; }
+.edit-banner-ph { font-size: 24px; opacity: 0.5; }
+.edit-appear-label { font-size: 11px; color: #8e8e93; }
 .banner-deco {
   position: absolute; border-radius: 50%;
   background: rgba(255,255,255,0.08);
@@ -963,48 +1192,79 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 }
 .peek-btn.back { background: rgba(255,255,255,0.28); }
 .peek-btn:active { background: rgba(255,255,255,0.4); }
-
-.avatar-ring {
-  position: absolute; top: -44px; left: 20px;
-  width: 88px; height: 88px; border-radius: 50%;
-  box-shadow: 0 0 0 4px #fff, 0 4px 20px rgba(201,107,126,0.35);
-  overflow: hidden; z-index: 2;
+.hero-profile-row {
+  position: absolute; left: 16px; right: 16px; bottom: -38px; z-index: 3;
+  display: flex; align-items: flex-start; gap: 12px;
 }
-.avatar-ring.clickable { cursor: pointer; }
-.avatar-img { width: 100%; height: 100%; object-fit: cover; }
-.avatar-placeholder {
-  width: 100%; height: 100%; border-radius: 50%;
-  background: linear-gradient(135deg, #d97a90, #c96b7e);
-  color: #fff; font-size: 32px; font-weight: 800;
-  display: flex; align-items: center; justify-content: center;
+.hero-profile-copy {
+  flex: 1; min-width: 0; padding-top: 9px;
 }
-.avatar-edit-badge {
-  position: absolute; inset: 0; border-radius: 50%;
-  background: rgba(0,0,0,0.35);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px; opacity: 0; transition: opacity 0.2s;
-}
-.avatar-ring:active .avatar-edit-badge { opacity: 1; }
 
 /* ─── Profile card ──────────────────────────── */
 .profile-card {
   position: relative; z-index: 1;
   background: #fff;
-  margin: 0 12px 12px;
-  border-radius: 0 0 20px 20px;
-  padding: 56px 16px 16px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  margin: 0 0 12px;
+  border-radius: 0 0 14px 14px;
+  padding: 48px 16px 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
 }
-.profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.profile-name { font-size: 20px; font-weight: 800; color: #1c1c1e; }
+.avatar-ring {
+  flex-shrink: 0; position: relative;
+  width: 76px; height: 76px; border-radius: 12px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.94), 0 10px 24px rgba(0,0,0,0.24);
+  overflow: hidden;
+  background: rgba(255,255,255,0.9);
+}
+.avatar-ring.clickable { cursor: pointer; }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-placeholder {
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, #d97a90, #a94d63);
+  color: #fff; font-size: 28px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.avatar-edit-badge {
+  position: absolute; inset: 0; border-radius: 12px;
+  background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; opacity: 0; transition: opacity 0.2s;
+}
+.avatar-ring:active .avatar-edit-badge { opacity: 1; }
+.profile-name {
+  color: #fff; font-size: 22px; font-weight: 800; line-height: 1.15;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.38);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .edit-btn {
-  background: #fef4f5; border: 1.5px solid rgba(201,107,126,0.25);
-  color: #c96b7e; border-radius: 20px; padding: 5px 14px;
+  flex-shrink: 0;
+  background: #fff; border: 1px solid #d8d8de;
+  color: #2c2c2e; border-radius: 16px; padding: 6px 12px;
   font-size: 12px; font-weight: 700; cursor: pointer;
 }
-.edit-btn:active { background: #ffe4ea; }
-.profile-bio { font-size: 13px; color: #6d6d72; line-height: 1.5; margin-bottom: 12px; }
-.stats-row { display: flex; align-items: center; margin-top: 10px; }
+.edit-btn:active { background: #f3f3f6; }
+.profile-card-tools {
+  position: absolute; top: 14px; right: 16px;
+  display: flex; justify-content: flex-end;
+}
+.profile-signature {
+  color: #6d6d72;
+  font-size: 14px;
+  line-height: 1.55;
+  margin-bottom: 11px;
+  word-break: break-word;
+}
+.profile-signature.muted { color: #aeaeb2; }
+.profile-meta-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.profile-bio { font-size: 13px; color: #6d6d72; line-height: 1.5; }
+.stats-row {
+  display: flex; align-items: center;
+  border-top: 1px solid #f0f0f3;
+  padding-top: 13px;
+}
 .stat-pill { flex: 1; text-align: center; }
 .stat-pill.clickable { cursor: pointer; }
 .stat-num { font-size: 22px; font-weight: 800; color: #1c1c1e; line-height: 1.2; }
@@ -1026,8 +1286,8 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 
 /* ─── Sections ──────────────────────────────── */
 .section-card {
-  background: #fff; margin: 0 12px 12px; border-radius: 20px;
-  padding: 14px 14px 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  background: #fff; margin: 0 12px 12px; border-radius: 14px;
+  padding: 14px 14px 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.035);
 }
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .section-title { font-size: 15px; font-weight: 700; color: #1c1c1e; }
@@ -1048,7 +1308,17 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .cal-legend { display: flex; gap: 16px; margin-bottom: 12px; }
 .legend-item { font-size: 12px; color: #6d6d72; display: flex; align-items: center; gap: 4px; }
 .legend-emoji { font-size: 14px; }
+/* 日历滑动容器 */
+.cal-weekday-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-slide-wrap { position: relative; overflow: hidden; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+/* 月份切换滑动动画 */
+.cal-slide-left-enter-active, .cal-slide-right-enter-active { transition: transform 0.26s ease, opacity 0.26s ease; }
+.cal-slide-left-leave-active, .cal-slide-right-leave-active { position: absolute; top: 0; left: 0; right: 0; transition: transform 0.26s ease, opacity 0.26s ease; }
+.cal-slide-left-enter-from { transform: translateX(35%); opacity: 0; }
+.cal-slide-left-leave-to { transform: translateX(-35%); opacity: 0; }
+.cal-slide-right-enter-from { transform: translateX(-35%); opacity: 0; }
+.cal-slide-right-leave-to { transform: translateX(35%); opacity: 0; }
 .cal-weekday { text-align: center; font-size: 11px; color: #aeaeb2; font-weight: 600; padding: 4px 0 6px; }
 .cal-cell-empty { min-height: 58px; }
 .cal-cell {
@@ -1068,12 +1338,46 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .cal-cell.cal-sat { background: rgba(91,138,240,0.05); }
 .cal-cell.cal-sun.active { background: rgba(201,107,126,0.09); }
 .cal-cell.cal-sat.active { background: rgba(91,138,240,0.09); }
-/* 节日标记 */
+/* 法定节假日 */
 .cal-holiday { display: block; font-size: 7.5px; color: #f87171; font-weight: 800; line-height: 1.2; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .cal-cell.cal-holiday-day { border-top: 2px solid rgba(248,113,113,0.4); }
+/* 调休补班 */
+.cal-cell.cal-workday { border-top: 2px solid rgba(251,146,60,0.55); }
+.cal-workday-label { display: block; font-size: 7px; color: #f97316; font-weight: 800; line-height: 1.2; text-align: center; }
+/* 浪漫节日 */
+.cal-special { display: block; font-size: 7.5px; color: #ec4899; font-weight: 800; line-height: 1.2; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.cal-cell.cal-special-day { border-top: 2px solid rgba(236,72,153,0.45); }
+/* 生日高亮（放最后保证优先级） */
+.cal-cell.cal-birthday-user { border-top: 2.5px solid #f87171 !important; background: rgba(248,113,113,0.1) !important; }
+.cal-cell.cal-birthday-admin { border-top: 2.5px solid #5b8af0 !important; background: rgba(91,138,240,0.1) !important; }
+.cal-bday-label { display: block; font-size: 7.5px; font-weight: 800; line-height: 1.2; text-align: center; white-space: nowrap; overflow: hidden; }
+.cal-bday-label.user { color: #f87171; }
+.cal-bday-label.admin { color: #5b8af0; }
 .cal-num { font-size: 13px; color: #3a3a3c; font-weight: 500; line-height: 1.3; }
 .cal-cell.cal-sun .cal-num { color: #f87171; }
 .cal-cell.cal-sat .cal-num { color: #5b8af0; }
+/* 年月选择器弹窗 */
+.mpicker-wrap { overflow: hidden; }
+.mpicker-header { background: linear-gradient(135deg, #c96b7e 0%, #e08898 100%); display: flex; align-items: center; justify-content: center; gap: 20px; padding: 22px 16px 20px; }
+.mpicker-arrow { font-size: 22px; color: rgba(255,255,255,0.95); background: rgba(255,255,255,0.22); border: none; cursor: pointer; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.mpicker-year { font-size: 22px; font-weight: 800; color: #fff; min-width: 100px; text-align: center; letter-spacing: 1px; }
+.mpicker-months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 16px; }
+.mpicker-month { font-size: 15px; font-weight: 500; padding: 12px 0; border-radius: 16px; border: none; background: #f2f2f7; color: #3a3a3c; cursor: pointer; transition: all 0.15s; }
+.mpicker-month.active { background: #c96b7e; color: #fff; font-weight: 700; box-shadow: 0 4px 12px rgba(201,107,126,0.35); transform: scale(1.04); }
+.mpicker-footer { padding: 4px 16px 16px; text-align: center; }
+.mpicker-today { font-size: 14px; color: #c96b7e; background: rgba(201,107,126,0.1); border: none; border-radius: 20px; padding: 8px 28px; cursor: pointer; font-weight: 600; }
+/* 生日选择展示框 */
+.birthday-display { padding: 11px 14px; border: 1.5px solid #e5e5ea; border-radius: 12px; font-size: 15px; background: #fff; cursor: pointer; color: #1c1c1e; min-height: 44px; display: flex; align-items: center; }
+.birthday-display.placeholder { color: #c7c7cc; }
+/* 个人资料生日 */
+.profile-birthday {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 12px; color: #6d6d72;
+  background: #f7f7f9; border-radius: 999px; padding: 5px 9px;
+}
+/* 月份标签可点击 */
+.month-label.clickable { cursor: pointer; }
+.month-label.clickable:hover { opacity: 0.75; }
 .today-num {
   background: #c96b7e; color: #fff !important;
   border-radius: 50%; width: 22px; height: 22px;
@@ -1253,13 +1557,18 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 }
 .detail-date { font-size: 16px; font-weight: 700; color: #1c1c1e; }
 .detail-close { background: #f2f2f7; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 13px; cursor: pointer; color: #6d6d72; }
+.detail-weight-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .detail-weight-pill {
   display: inline-flex; align-items: center; gap: 4px;
   background: linear-gradient(135deg, #fff0f3, #ffe4ea);
   color: #c96b7e; border-radius: 20px; padding: 6px 14px;
-  font-size: 13px; margin-bottom: 14px;
+  font-size: 13px;
 }
+.detail-weight-pill.partner { background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #5b8af0; }
+.weight-author { font-size: 11px; opacity: 0.75; margin-left: 2px; }
 .detail-weight-note { color: #d49ea8; font-size: 12px; }
+.diary-author { font-size: 11px; font-weight: 700; color: #5b8af0; margin-bottom: 4px; }
+.vb-author { font-size: 11px; font-weight: 700; color: #5b8af0; margin-left: auto; }
 .detail-section-label { font-size: 12px; font-weight: 800; color: #aeaeb2; text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 8px; }
 .detail-empty { text-align: center; color: #c8c8cc; font-size: 14px; padding: 24px 0; }
 .detail-partner-divider {
@@ -1277,9 +1586,13 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 }
 .weight-partner { color: #5b8af0; }
 .hero-banner.partner { background: linear-gradient(135deg, #a0b8e8 0%, #5b8af0 55%, #3b68d0 100%); }
-.hero-banner.partner .banner-bg { background: linear-gradient(135deg, #a0b8e8, #3b68d0); }
-.profile-card.partner { border-top: 3px solid #5b8af0; }
-.profile-card.partner .avatar-ring { box-shadow: 0 0 0 4px #fff, 0 4px 20px rgba(91,138,240,0.35); }
+.hero-banner.partner .banner-bg {
+  background:
+    radial-gradient(ellipse at 30% 60%, rgba(255,255,255,0.16) 0%, transparent 60%),
+    linear-gradient(135deg, #a0b8e8, #3b68d0);
+}
+.profile-card.partner { border-top: none; }
+.profile-card.partner .avatar-ring { box-shadow: 0 0 0 2px rgba(255,255,255,0.94), 0 10px 24px rgba(0,0,0,0.24); }
 
 .order-block { background: #f9f9fb; border-radius: 16px; padding: 12px; margin-bottom: 8px; }
 .order-block-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
