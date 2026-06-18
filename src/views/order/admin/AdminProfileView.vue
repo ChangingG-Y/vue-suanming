@@ -117,10 +117,13 @@
     <div class="section-card">
       <div class="section-header">
         <span class="section-title">📅 {{ viewPartner ? 'TA 的' : '' }}生活日历</span>
-        <div class="month-nav">
-          <button class="month-btn" @click="changeMonth(-1)">‹</button>
-          <span class="month-label clickable" @click="openMonthPicker">{{ calYear }}年{{ calMonth }}月</span>
-          <button class="month-btn" @click="changeMonth(1)">›</button>
+        <div class="cal-header-right">
+          <button v-if="!viewPartner" class="cal-add-today-btn" @click="showTodaySheet = true">＋ 今日</button>
+          <div class="month-nav">
+            <button class="month-btn" @click="changeMonth(-1)">‹</button>
+            <span class="month-label clickable" @click="openMonthPicker">{{ calYear }}年{{ calMonth }}月</span>
+            <button class="month-btn" @click="changeMonth(1)">›</button>
+          </div>
         </div>
       </div>
       <div class="cal-legend">
@@ -285,6 +288,15 @@
         @cancel="showBirthdayPicker = false"
       />
     </van-popup>
+
+    <!-- 今日速记 action sheet -->
+    <van-action-sheet
+      v-model:show="showTodaySheet"
+      :actions="todaySheetActions"
+      title="今日速记"
+      cancel-text="取消"
+      @select="onTodaySheetSelect"
+    />
 
     <!-- Weight -->
     <van-popup v-model:show="showWeightModal" round position="bottom" safe-area-inset-bottom>
@@ -618,6 +630,7 @@ const showEditModal = ref(false)
 const showWeightModal = ref(false)
 const showVisitModal = ref(false)
 const showDiaryModal = ref(false)
+const showTodaySheet = ref(false)
 const showDayDetail = ref(false)
 const showMonthPicker = ref(false)
 const pickerYear = ref(new Date().getFullYear())
@@ -1014,6 +1027,18 @@ function resizeTo800(file) {
   })
 }
 
+const todaySheetActions = computed(() => [
+  { name: `${cfg.value.calEmojiDining} ${cfg.value.calLabelDining}`, subname: '记录今天的外出打卡' },
+  { name: `${cfg.value.calEmojiDiary} ${cfg.value.calLabelDiary}`, subname: '记录今天的心情日记' },
+  { name: '⚖️ 体重', subname: '记录今天的体重数据' },
+])
+function onTodaySheetSelect(action, index) {
+  showTodaySheet.value = false
+  if (index === 0) openVisitForm(todayStr)
+  else if (index === 1) openDiaryForm(todayStr)
+  else openWeightInput()
+}
+
 function openEdit() {
   editForm.value = { nickname: myProfile.value.nickname || '', height: myProfile.value.height || '', bio: myProfile.value.bio || '', birthday: myProfile.value.birthday || '' }
   showEditModal.value = true
@@ -1159,7 +1184,9 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .hero-profile-row {
   position: absolute; left: 16px; right: 16px; bottom: -38px; z-index: 3;
   display: flex; align-items: flex-start; gap: 12px;
+  pointer-events: none;
 }
+.hero-profile-row .avatar-ring { pointer-events: auto; }
 .hero-profile-copy {
   flex: 1; min-width: 0; padding-top: 9px;
 }
@@ -1173,8 +1200,8 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .avatar-ring {
   flex-shrink: 0; position: relative;
   width: 76px; height: 76px; border-radius: 12px;
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.94), 0 10px 24px rgba(0,0,0,0.24);
-  overflow: hidden; background: rgba(255,255,255,0.9);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+  overflow: hidden; background: transparent;
 }
 .avatar-ring.clickable { cursor: pointer; }
 .avatar-img { width: 100%; height: 100%; object-fit: cover; }
@@ -1354,6 +1381,16 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 .cal-emojis { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; margin-top: 2px; min-height: 14px; font-size: 10px; line-height: 1.2; }
 .cal-kg { font-size: 8.5px; color: #c96b7e; font-weight: 700; background: #fef4f5; border-radius: 4px; padding: 1px 3px; margin-top: 2px; }
 .cal-kg.partner-kg { color: #5b8af0; background: #eff6ff; }
+.cal-header-right { display: flex; align-items: center; gap: 8px; }
+.cal-add-today-btn {
+  background: linear-gradient(135deg, #5b8af0, #7aa3f5);
+  color: #fff; border: none; border-radius: 16px;
+  padding: 5px 11px; font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(91,138,240,0.28);
+  transition: opacity 0.15s, transform 0.12s;
+}
+.cal-add-today-btn:active { opacity: 0.82; transform: scale(0.93); }
 .month-nav { display: flex; align-items: center; gap: 4px; }
 .month-btn { background: none; border: none; font-size: 22px; color: #c96b7e; cursor: pointer; padding: 0 4px; line-height: 1; }
 .month-label { font-size: 13px; font-weight: 600; color: #1c1c1e; min-width: 72px; text-align: center; }
@@ -1508,7 +1545,7 @@ function previewImg(imgs, idx) { showImagePreview({ images: imgs, startPosition:
 }
 .partner-block { border-left: 3px solid #bfdbfe; padding-left: 8px; }
 .profile-card.partner { border-top: none; }
-.profile-card.partner .avatar-ring { box-shadow: 0 0 0 2px rgba(255,255,255,0.94), 0 10px 24px rgba(0,0,0,0.24); }
+.profile-card.partner .avatar-ring { box-shadow: 0 8px 18px rgba(0,0,0,0.18); }
 
 .order-block { background: #f9f9fb; border-radius: 16px; padding: 12px; margin-bottom: 8px; }
 .order-block-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
